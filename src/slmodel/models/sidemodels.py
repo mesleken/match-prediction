@@ -80,6 +80,7 @@ class SideMarketsModel:
         half_life_years: float = 0.75,
         shrinkage_k: float = 6.0,
         in_season_boost: float = 3.0,
+        **kwargs: Any,
     ) -> None:
         self.half_life_years = half_life_years
         self.shrinkage_k = shrinkage_k

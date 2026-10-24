@@ -73,7 +73,13 @@ def load_db_metadata():
 
 @st.cache_resource
 def get_fitted_models(matches_df):
-    from slmodel.models.dixon_coles import compute_squad_priors
+    import importlib
+    import slmodel.models.dixon_coles
+    import slmodel.models.sidemodels
+    importlib.reload(slmodel.models.dixon_coles)
+    importlib.reload(slmodel.models.sidemodels)
+    from slmodel.models.dixon_coles import DixonColesModel, compute_squad_priors
+    from slmodel.models.sidemodels import SideMarketsModel
     now_utc = datetime.now(timezone.utc)
     sq_priors = compute_squad_priors(db_path=DB_PATH)
     dc_model = DixonColesModel(

@@ -84,6 +84,7 @@ class DixonColesModel:
         closeness_draw_boost: float = 0.0,
         fixed_rho: Optional[float] = None,
         team_squad_priors: Optional[dict[int, tuple[float, float]]] = None,
+        **kwargs: Any,
     ) -> None:
         self.half_life_years = half_life_years
         self.ridge_att = ridge_att
