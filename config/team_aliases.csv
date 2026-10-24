@@ -1,0 +1,56 @@
+source,source_name,team_id,canonical_name
+football-data,Galatasaray,1,Galatasaray
+football-data,Fenerbahce,2,Fenerbahce
+football-data,Besiktas,3,Besiktas
+football-data,Trabzonspor,4,Trabzonspor
+football-data,Basaksehir,5,Basaksehir
+football-data,Buyuksehyr,5,Basaksehir
+football-data,Konyaspor,6,Konyaspor
+football-data,Antalyaspor,7,Antalyaspor
+football-data,Kasimpasa,8,Kasimpasa
+football-data,Sivasspor,9,Sivasspor
+football-data,Alanyaspor,10,Alanyaspor
+football-data,Kayserispor,11,Kayserispor
+football-data,Gaziantep,12,Gaziantep FK
+football-data,Gaziantep BB,12,Gaziantep FK
+football-data,Gaziantepspor,13,Gaziantepspor
+football-data,Hatayspor,14,Hatayspor
+football-data,Rizespor,15,Rizespor
+football-data,Caykur Rizespor,15,Rizespor
+football-data,Ankaragucu,16,Ankaragucu
+football-data,Goztepe,17,Goztepe
+football-data,Goztep,17,Goztepe
+football-data,Göztepe,17,Goztepe
+football-data,Karagumruk,18,Fatih Karagumruk
+football-data,Adana Demirspor,19,Adana Demirspor
+football-data,Ad. Demirspor,19,Adana Demirspor
+football-data,Samsunspor,20,Samsunspor
+football-data,Giresunspor,21,Giresunspor
+football-data,Umraniyespor,22,Umraniyespor
+football-data,Pendikspor,23,Pendikspor
+football-data,Istanbulspor,24,Istanbulspor
+football-data,Bodrumspor,25,Bodrum FK
+football-data,Eyupspor,26,Eyupspor
+football-data,Genclerbirligi,27,Genclerbirligi
+football-data,Yeni Malatyaspor,28,Yeni Malatyaspor
+football-data,Malatyaspor,28,Yeni Malatyaspor
+football-data,Denizlispor,29,Denizlispor
+football-data,BB Erzurumspor,30,Erzurumspor FK
+football-data,Erzurum BB,30,Erzurumspor FK
+football-data,Erzurumspor,30,Erzurumspor FK
+football-data,Akhisar Belediyespor,31,Akhisarspor
+football-data,Bursaspor,32,Bursaspor
+football-data,Karabukspor,33,Karabukspor
+football-data,Osmanlispor,34,Ankaraspor
+football-data,Kocaelispor,35,Kocaelispor
+football-data,Sakaryaspor,36,Sakaryaspor
+football-data,Altay,37,Altay
+football-data,Corum,38,Corum FK
+football-data,Corum FK,38,Corum FK
+football-data,Çorum FK,38,Corum FK
+football-data,Amedspor,39,Amedspor
+football-data,Amed SK,39,Amedspor
+football-data,GS,1,Galatasaray
+football-data,FB,2,Fenerbahce
+football-data,BJK,3,Besiktas
+football-data,TS,4,Trabzonspor

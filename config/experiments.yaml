@@ -1,0 +1,81 @@
+# Preregistered Experiments Registry
+experiments:
+  - id: "E01"
+    name: "Time Decay Half-Life"
+    hypothesis: "Exponential time decay improves out-of-sample score log-loss over unweighted model."
+    baseline_config: { half_life_years: null }
+    test_config: { half_life_years: 1.25 }
+    primary_metric: "score_log_loss"
+    status: "PLANNED"
+
+  - id: "E02"
+    name: "Shot Hybrid Composite Likelihood"
+    hypothesis: "Adding calibrated shot proxy to goal likelihood reduces Poisson noise and improves log-loss."
+    baseline_config: { use_shot_hybrid: false }
+    test_config: { use_shot_hybrid: true, shot_hybrid_alpha: 0.35 }
+    primary_metric: "score_log_loss"
+    status: "PLANNED"
+
+  - id: "E03"
+    name: "Off-Season Variance Injection (gamma_off)"
+    hypothesis: "Penalizing time weight across summer transfer windows improves early-season calibration."
+    baseline_config: { off_season_decay: 1.0 }
+    test_config: { off_season_decay: 0.80 }
+    primary_metric: "score_log_loss"
+    status: "PLANNED"
+
+  - id: "E04"
+    name: "Team-Specific Home Advantage"
+    hypothesis: "Allowing shrunken team home advantages h_i improves fit over a shared league constant."
+    baseline_config: { ridge_h: 9999.0 }
+    test_config: { ridge_h: 2.0 }
+    primary_metric: "rps"
+    status: "PLANNED"
+
+  - id: "E05"
+    name: "Data-Driven Promoted Team Priors"
+    hypothesis: "Empirical Bayes prior for newly promoted teams outperforms uninformative zero prior."
+    baseline_config: { promoted_team_prior_att: 0.0, promoted_team_prior_def: 0.0 }
+    test_config: { use_data_driven_promoted_prior: true }
+    primary_metric: "score_log_loss"
+    status: "PLANNED"
+
+  - id: "E06"
+    name: "Market Log-Intensity Blending"
+    hypothesis: "Blending model with Shin-devigged market implied lambdas achieves lower RPS than either alone."
+    baseline_config: { use_market_blend: false }
+    test_config: { use_market_blend: true }
+    primary_metric: "rps"
+    status: "PLANNED"
+
+  - id: "E07"
+    name: "Dual-Weight Market Blending (Total vs Superiority)"
+    hypothesis: "Separating w_total from w_superiority yields better likelihood than a single isotropic weight."
+    baseline_config: { dual_weights: false }
+    test_config: { dual_weights: true }
+    primary_metric: "score_log_loss"
+    status: "PLANNED"
+
+  - id: "E08"
+    name: "Layer B-min Lineup Deviation (Pre-Lineup)"
+    hypothesis: "Accounting for expected minutes and known absences improves pre-match prediction."
+    baseline_config: { use_player_ratings: false }
+    test_config: { use_player_ratings: true, mode: "pre_lineup" }
+    primary_metric: "score_log_loss"
+    status: "PLANNED"
+
+  - id: "E10"
+    name: "Layer E-min Context Block"
+    hypothesis: "Saturating rest difference, altitude/distance, derbies, and crowd overrides improve log-loss."
+    baseline_config: { use_context: false }
+    test_config: { use_context: true }
+    primary_metric: "score_log_loss"
+    status: "PLANNED"
+
+  - id: "E11"
+    name: "Game-State Conditioned Half-Time / Full-Time"
+    hypothesis: "Conditioning 2nd half intensities on 1st half score state outperforms independent Poisson."
+    baseline_config: { htft_conditioned: false }
+    test_config: { htft_conditioned: true }
+    primary_metric: "htft_log_loss"
+    status: "PLANNED"

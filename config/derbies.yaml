@@ -1,0 +1,29 @@
+# Major Süper Lig Derbies and High-Intensity Rivalries
+derbies:
+  - name: "Kıtalararası Derbi (Intercontinental Derby)"
+    teams: [1, 2] # Galatasaray - Fenerbahçe
+    multiplier_intensity: 1.25
+
+  - name: "Beşiktaş - Fenerbahçe Derbisi"
+    teams: [2, 3] # Fenerbahçe - Beşiktaş
+    multiplier_intensity: 1.20
+
+  - name: "Beşiktaş - Galatasaray Derbisi"
+    teams: [1, 3] # Galatasaray - Beşiktaş
+    multiplier_intensity: 1.20
+
+  - name: "Trabzonspor - Fenerbahçe"
+    teams: [2, 4] # Fenerbahçe - Trabzonspor
+    multiplier_intensity: 1.25
+
+  - name: "Trabzonspor - Galatasaray"
+    teams: [1, 4] # Galatasaray - Trabzonspor
+    multiplier_intensity: 1.15
+
+  - name: "Trabzonspor - Beşiktaş"
+    teams: [3, 4] # Beşiktaş - Trabzonspor
+    multiplier_intensity: 1.15
+
+  - name: "İzmir Derbisi"
+    teams: [17, 37] # Göztepe - Karşıyaka / Altay
+    multiplier_intensity: 1.20

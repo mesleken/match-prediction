@@ -1,0 +1,45 @@
+[project]
+name = "slmodel"
+version = "0.1.0"
+description = "Süper Lig Statistical Match Prediction Engine"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=2.0.0",
+    "httpx>=0.28.1",
+    "matplotlib>=3.11.2",
+    "numpy>=2.0.0",
+    "polars>=2.0.0",
+    "pyarrow>=26.0.0",
+    "pydantic>=2.14.0",
+    "pyyaml>=6.0.0",
+    "rapidfuzz>=3.14.0",
+    "scipy>=1.18.0",
+    "statsmodels>=0.15.0",
+    "tenacity>=9.2.0",
+    "typer>=0.27.0",
+]
+
+[project.scripts]
+slm = "slmodel.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.0",
+    "ruff>=0.17.0",
+]
+scrape = [
+    "curl-cffi>=0.13.0",
+]
+app = [
+    "streamlit>=1.40.0",
+    "plotly>=6.0.0",
+]
+ml = [
+    "scikit-learn>=1.6.0",
+    "lightgbm>=4.5.0",
+]

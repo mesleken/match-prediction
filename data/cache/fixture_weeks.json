@@ -1,0 +1,206 @@
+[
+  {
+    "week": 1,
+    "start_date": "14.08.2026",
+    "end_date": "17.08.2026",
+    "is_finished": true
+  },
+  {
+    "week": 2,
+    "start_date": "21.08.2026",
+    "end_date": "24.08.2026",
+    "is_finished": true
+  },
+  {
+    "week": 3,
+    "start_date": "28.08.2026",
+    "end_date": "31.08.2026",
+    "is_finished": true
+  },
+  {
+    "week": 4,
+    "start_date": "4.09.2026",
+    "end_date": "7.09.2026",
+    "is_finished": true
+  },
+  {
+    "week": 5,
+    "start_date": "11.09.2026",
+    "end_date": "14.09.2026",
+    "is_finished": true
+  },
+  {
+    "week": 6,
+    "start_date": "18.09.2026",
+    "end_date": "20.09.2026",
+    "is_finished": true
+  },
+  {
+    "week": 7,
+    "start_date": "9.10.2026",
+    "end_date": "12.10.2026",
+    "is_finished": true
+  },
+  {
+    "week": 8,
+    "start_date": "16.10.2026",
+    "end_date": "19.10.2026",
+    "is_finished": true
+  },
+  {
+    "week": 9,
+    "start_date": "23.10.2026",
+    "end_date": "26.10.2026",
+    "is_finished": false
+  },
+  {
+    "week": 10,
+    "start_date": "30.10.2026",
+    "end_date": "2.11.2026",
+    "is_finished": false
+  },
+  {
+    "week": 11,
+    "start_date": "6.11.2026",
+    "end_date": "8.11.2026",
+    "is_finished": false
+  },
+  {
+    "week": 12,
+    "start_date": "21.11.2026",
+    "end_date": "23.11.2026",
+    "is_finished": false
+  },
+  {
+    "week": 13,
+    "start_date": "27.11.2026",
+    "end_date": "30.11.2026",
+    "is_finished": false
+  },
+  {
+    "week": 14,
+    "start_date": "4.12.2026",
+    "end_date": "7.12.2026",
+    "is_finished": false
+  },
+  {
+    "week": 15,
+    "start_date": "11.12.2026",
+    "end_date": "14.12.2026",
+    "is_finished": false
+  },
+  {
+    "week": 16,
+    "start_date": "18.12.2026",
+    "end_date": "21.12.2026",
+    "is_finished": false
+  },
+  {
+    "week": 17,
+    "start_date": "17.01.2027",
+    "end_date": "17.01.2027",
+    "is_finished": false
+  },
+  {
+    "week": 18,
+    "start_date": "24.01.2027",
+    "end_date": "24.01.2027",
+    "is_finished": false
+  },
+  {
+    "week": 19,
+    "start_date": "31.01.2027",
+    "end_date": "31.01.2027",
+    "is_finished": false
+  },
+  {
+    "week": 20,
+    "start_date": "7.02.2027",
+    "end_date": "7.02.2027",
+    "is_finished": false
+  },
+  {
+    "week": 21,
+    "start_date": "14.02.2027",
+    "end_date": "14.02.2027",
+    "is_finished": false
+  },
+  {
+    "week": 22,
+    "start_date": "21.02.2027",
+    "end_date": "21.02.2027",
+    "is_finished": false
+  },
+  {
+    "week": 23,
+    "start_date": "28.02.2027",
+    "end_date": "28.02.2027",
+    "is_finished": false
+  },
+  {
+    "week": 24,
+    "start_date": "7.03.2027",
+    "end_date": "7.03.2027",
+    "is_finished": false
+  },
+  {
+    "week": 25,
+    "start_date": "14.03.2027",
+    "end_date": "14.03.2027",
+    "is_finished": false
+  },
+  {
+    "week": 26,
+    "start_date": "21.03.2027",
+    "end_date": "21.03.2027",
+    "is_finished": false
+  },
+  {
+    "week": 27,
+    "start_date": "4.04.2027",
+    "end_date": "4.04.2027",
+    "is_finished": false
+  },
+  {
+    "week": 28,
+    "start_date": "11.04.2027",
+    "end_date": "11.04.2027",
+    "is_finished": false
+  },
+  {
+    "week": 29,
+    "start_date": "18.04.2027",
+    "end_date": "18.04.2027",
+    "is_finished": false
+  },
+  {
+    "week": 30,
+    "start_date": "25.04.2027",
+    "end_date": "25.04.2027",
+    "is_finished": false
+  },
+  {
+    "week": 31,
+    "start_date": "2.05.2027",
+    "end_date": "2.05.2027",
+    "is_finished": false
+  },
+  {
+    "week": 32,
+    "start_date": "9.05.2027",
+    "end_date": "9.05.2027",
+    "is_finished": false
+  },
+  {
+    "week": 33,
+    "start_date": "16.05.2027",
+    "end_date": "16.05.2027",
+    "is_finished": false
+  },
+  {
+    "week": 34,
+    "start_date": "23.05.2027",
+    "end_date": "23.05.2027",
+    "is_finished": false
+  }
+]

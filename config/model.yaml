@@ -1,0 +1,33 @@
+# Model Configuration & Layer Toggles
+layers:
+  use_dixon_coles: true     # Layer A (Backbone)
+  use_market_blend: true    # Layer F (Market Implied Inversion & Log-Pooling)
+  use_shot_hybrid: false    # Experiment E02 (Shot proxy composite likelihood)
+  use_player_ratings: false # Layer B-min (Pending G4 Sofascore gate)
+  use_synergy: false        # Layer C (Timeboxed trial in Phase 4)
+  use_manager: false        # Layer D (Timeboxed trial in Phase 4)
+  use_context: false        # Layer E-min (Rest, derby, distance, crowd)
+
+dixon_coles:
+  half_life_years: 1.25     # Exponential decay half-life
+  ridge_att: 1.0            # L2 penalty for attack
+  ridge_def: 1.0            # L2 penalty for defense
+  ridge_h: 2.0              # L2 penalty for team-specific home advantage deviation
+  rho_clip_eps: 0.001       # Positivity margin for tau(x,y)
+  max_goals: 10             # Truncation boundary for score matrix
+  off_season_decay: 0.80    # Gamma_off penalty across summer transfer windows
+  promoted_team_prior_att: -0.15 # Fallback prior before data-driven estimate
+  promoted_team_prior_def: -0.12 # Fallback prior before data-driven estimate
+
+market_blend:
+  method: "log_intensity"   # 'log_intensity' (preserves downstream consistency)
+  devig_method: "shin"      # 'shin' or 'power'
+  default_w_total: 0.50     # Weight for total goals log(lam + mu)
+  default_w_superiority: 0.50 # Weight for superiority log(lam / mu)
+  min_market_overround: 1.005
+  max_market_overround: 1.25
+
+simulation:
+  bootstrap_samples: 200    # Bayesian bootstrap draws for posterior predictive
+  credible_interval_pct: 90 # 90% credible intervals ([5%, 95%])
+  seed: 42

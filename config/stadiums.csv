@@ -1,0 +1,40 @@
+team_id,stadium_name,city,lat,lon,altitude_m
+1,RAMS Park,Istanbul,41.1033,28.9911,75
+2,Ulker Stadyumu Sukru Saracoglu,Istanbul,40.9878,29.0369,25
+3,Tupras Stadyumu,Istanbul,41.0392,28.9947,10
+4,Papara Park,Trabzon,40.9750,39.6380,15
+5,Basaksehir Fatih Terim Stadyumu,Istanbul,41.1228,28.8092,110
+6,MEDAS Konya Buyuksehir Stadyumu,Konya,37.9467,32.4839,1016
+7,Corendon Airlines Park Antalya,Antalya,36.8869,30.6658,40
+8,Recep Tayyip Erdogan Stadyumu,Istanbul,41.0336,28.9719,35
+9,BG Grup 4 Eylul Stadyumu,Sivas,39.7297,36.9869,1285
+10,Gain Park Stadyumu,Alanya,36.5492,32.0622,50
+11,RHG Enerturk Enerji Stadyumu,Kayseri,38.7408,35.4339,1050
+12,Kalyon Stadyumu,Gaziantep,37.1133,37.3694,850
+13,Kamil Ocak Stadyumu,Gaziantep,37.0667,37.3833,850
+14,Mersin Stadyumu,Mersin,36.7869,34.5458,20
+15,Caykur Didi Stadyumu,Rize,41.0367,40.5639,10
+16,Eryaman Stadyumu,Ankara,39.9833,32.6167,830
+17,Gursel Aksel Stadyumu,Izmir,38.3972,27.0861,20
+18,Ataturk Olimpiyat Stadyumu,Istanbul,41.0744,28.7656,120
+19,Yeni Adana Stadyumu,Adana,37.0456,35.3436,50
+20,Samsun 19 Mayis Stadyumu,Samsun,41.2267,36.4589,15
+21,Cotanak Spor Kompleksi,Giresun,40.9167,38.3833,15
+22,Umraniye Belediyesi Sehir Stadyumu,Istanbul,41.0333,29.1167,130
+23,Pendik Stadyumu,Istanbul,40.8750,29.2333,20
+24,Esenyurt Necmi Kadioglu Stadyumu,Istanbul,41.0250,28.6750,90
+25,Bodrum Ilce Stadyumu,Bodrum,37.0422,27.4378,15
+26,Eyup Stadyumu,Istanbul,41.0500,28.9333,40
+27,Eryaman Stadyumu,Ankara,39.9833,32.6167,830
+28,Yeni Malatya Stadyumu,Malatya,38.3500,38.3167,960
+29,Denizli Ataturk Stadyumu,Denizli,37.7833,29.0833,350
+30,Kazim Karabekir Stadyumu,Erzurum,39.9056,41.2611,1890
+31,Spor Toto Akhisar Stadyumu,Akhisar,38.9167,27.8333,95
+32,Bursa Buyuksehir Belediye Stadyumu,Bursa,40.1833,29.0667,150
+33,Dr Necmettin Seyhoglu Stadyumu,Karabuk,41.2000,32.6167,300
+34,Osmanli Stadyumu,Ankara,39.9500,32.7500,850
+35,Kocaeli Stadyumu,Kocaeli,40.7667,29.9167,50
+36,Sakarya Ataturk Stadyumu,Sakarya,40.7833,30.4000,35
+37,Alsancak Mustafa Denizli Stadyumu,Izmir,38.4333,27.1500,10
+38,Corum Sehir Stadyumu,Corum,40.5500,34.9500,800
+39,Diyarbakir Stadyumu,Diyarbakir,37.9167,40.2167,670
