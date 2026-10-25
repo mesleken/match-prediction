@@ -10,6 +10,11 @@ import streamlit as st
 from slmodel.models.dixon_coles import DixonColesModel
 from slmodel.models.player_ratings import PlayerRatingEngine
 from slmodel.models.referee_engine import RefereeEngine
+from slmodel.models.availability import AvailabilityResolver
+from slmodel.ingest.api_football import ApiFootballClient
+from slmodel.ingest.quota import QuotaManager
+from slmodel.ingest.external_fixtures import ExternalFixturesClient
+from slmodel.ingest.weather import WeatherIngestClient
 from slmodel.ingest.fixtures import fetch_fixture_weeks, fetch_weekly_fixtures, get_current_active_week
 from slmodel.data.player_performance import (
     generate_and_sync_player_match_stats,
@@ -161,6 +166,7 @@ st.caption(
 tabs = st.tabs([
     "🎯 Maç Tahmini & Simülasyon",
     "👥 Kadro & Sinerji Simülasyonu (What-If?)",
+    "🩺 Eksik / Sakat Yönetimi & Dış Veri",
     "🏆 2026/27 Sezon İstatistikleri & xG",
     "📊 Takım Güçleri & Belirsizlik",
     "🔒 Kriptografik Tahmin Günlüğü",
@@ -922,6 +928,106 @@ with tabs[1]:
         st.dataframe(df_team_stats, use_container_width=True)
 
 with tabs[2]:
+    st.subheader("🩺 Oyuncu Devamsızlık, Sakatlık / Ceza Yönetimi & Dış Veri Durumu")
+    st.caption("Çok katmanlı devamsızlık çözümleyici: Manuel Girişler > API-Football Anlık Görüntüleri > Türetilmiş Ceza / Temel Kadro")
+
+    # 1. Dış Veri Kaynakları & Kota Durumu Kartları
+    q_mgr = QuotaManager(db_path=DB_PATH)
+    q_stat = q_mgr.get_status_summary()
+
+    api_cli = ApiFootballClient(db_path=DB_PATH)
+    probe_stat = api_cli.probe_account_entitlement()
+
+    col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+    with col_stat1:
+        st.metric("⚽ Mackolik Fikstür & Hakem", "Aktif", "Avrupa + Kupa Fikstürleri")
+    with col_stat2:
+        st.metric("🌦️ Open-Meteo Saatlik Hava", "Aktif", "39 Stadyum / 10k çağrı/gün")
+    with col_stat3:
+        if probe_stat.get("status") == "no_key":
+            st.metric("🤖 API-Football", "Manuel Mod", "Anahtar girilmedi")
+        elif probe_stat.get("season_locked"):
+            st.metric("🤖 API-Football", "2026 Kilitli", "Free Plan Sınırı")
+        else:
+            st.metric("🤖 API-Football", "Aktif", f"{probe_stat.get('count', 0)} kayıt")
+    with col_stat4:
+        st.metric("📊 API Günlük Kota", f"{q_stat.get('remaining', 100)} / 100", f"Kullanılan: {q_stat.get('used', 0)}")
+
+    col_btn1, col_btn2 = st.columns([1.5, 4])
+    with col_btn1:
+        if st.button("🔄 Tüm Dış Verileri Şimdi Senkronize Et", key="sync_ext_btn", use_container_width=True):
+            with st.spinner("Avrupa fikstürleri, stadyum hava durumu ve sakatlıklar senkronize ediliyor..."):
+                ext_c = ExternalFixturesClient(db_path=DB_PATH)
+                ext_res = ext_c.sync_all_external_fixtures()
+                w_c = WeatherIngestClient(db_path=DB_PATH)
+                w_res = w_c.sync_season_weather("2627")
+                st.success(f"Senkronizasyon tamamlandı! {ext_res['synced_external_fixtures']} Avrupa maçı, {w_res['synced_matches']} hava kaydı güncellendi.")
+                st.rerun()
+
+    st.markdown("---")
+
+    # 2. Aktif Manuel Eksikler & Override Formu
+    col_form, col_list = st.columns([1.2, 1.8])
+    avail_resolver = AvailabilityResolver(db_path=DB_PATH)
+
+    with col_form:
+        st.markdown("#### ✍️ Manuel Eksik / Sakatlık Bildirimi")
+        team_options = teams_df["name"].tolist()
+        sel_team_name = st.selectbox("Takım Seçin", team_options, key="avail_sel_team")
+        sel_tid = int(teams_df[teams_df["name"] == sel_team_name]["team_id"].iloc[0])
+
+        team_roster = avail_resolver.resolve_team_availability(sel_tid)
+        player_names = [f"{p['name']} ({p['position']}) — {p['status'].upper()}" for p in team_roster]
+        sel_p_idx = st.selectbox("Oyuncu Seçin", range(len(player_names)), format_func=lambda i: player_names[i], key="avail_sel_player")
+        chosen_p = team_roster[sel_p_idx]
+
+        sel_status = st.selectbox(
+            "Oyuncu Durumu",
+            ["out", "doubtful", "available"],
+            format_func=lambda s: "🚫 Kesin Yok (Out - %0 Oynama İhtimali)" if s == "out" else ("⚠️ Şüpheli (Doubtful - %50 İhtimal)" if s == "doubtful" else "✅ Oynar (Available - %100)"),
+            key="avail_sel_status",
+        )
+        note_txt = st.text_input("Gerekçe / Not (İsteğe bağlı)", placeholder="Örn: Arka adale zorlanması, kart cezalısı...", key="avail_sel_note")
+
+        if st.button("💾 Durumu Kaydet", use_container_width=True, type="primary", key="save_avail_btn"):
+            avail_resolver.set_manual_override(
+                team_id=sel_tid,
+                player_id=chosen_p["player_id"],
+                status=sel_status,
+                note=note_txt,
+            )
+            st.success(f"{chosen_p['name']} için durum '{sel_status.upper()}' olarak güncellendi!")
+            st.rerun()
+
+    with col_list:
+        st.markdown("#### 📋 Aktif Manuel Eksikler")
+        active_overrides = avail_resolver.list_active_overrides()
+        if not active_overrides:
+            st.info("Şu anda sisteme girilmiş aktif bir manuel eksik bulunmuyor.")
+        else:
+            ovr_df = pd.DataFrame(active_overrides)
+            disp_df = ovr_df[["override_id", "team_name", "player_name", "position", "status", "note", "created_at"]].copy()
+            disp_df.columns = ["ID", "Takım", "Oyuncu", "Pozisyon", "Durum", "Not", "Tarih"]
+            st.dataframe(disp_df, use_container_width=True)
+
+            del_id = st.selectbox("Kaldırılacak Kayıt ID", [o["override_id"] for o in active_overrides], format_func=lambda x: f"ID: {x}", key="del_override_id")
+            if st.button("🗑️ Seçilen Manuel Kaydı Kaldır", use_container_width=True, key="del_override_btn"):
+                avail_resolver.clear_manual_override(del_id)
+                st.success("Kayıt kaldırıldı!")
+                st.rerun()
+
+    # 3. Tüm Takım Kadrosunun Çözülmüş Durumu
+    st.markdown("---")
+    st.markdown(f"#### 👥 {sel_team_name} Kadrosunun Çözülmüş Durum Raporu")
+    roster_disp = pd.DataFrame(team_roster)
+    if not roster_disp.empty:
+        r_table = roster_disp[["name", "position", "overall_rating", "att_rating", "def_rating", "status", "p_play", "source", "reason"]].copy()
+        r_table.columns = ["Oyuncu Adı", "Poz", "OVR", "Hücum Gücü", "Savunma Gücü", "Durum", "Oynama İhtimali", "Kaynak", "Açıklama"]
+        r_table["Oynama İhtimali"] = r_table["Oynama İhtimali"].apply(lambda p: f"%{int(p*100)}")
+        r_table["Kaynak"] = r_table["Kaynak"].apply(lambda s: "✋ Manuel" if s == "manual" else ("🤖 API" if s == "api_football" else "🧮 Temel Kadro"))
+        st.dataframe(r_table, use_container_width=True)
+
+with tabs[3]:
     st.subheader("🏆 Süper Lig Sezon İstatistikleri, Puan Durumu ve xG / xPts Analizi")
     avail_seasons = sorted(matches_df["season"].astype(str).unique().tolist(), reverse=True)
     col_s1, col_s2, col_s3 = st.columns([1.2, 2.2, 0.8])
@@ -1032,7 +1138,7 @@ with tabs[2]:
         m_df_view = m_df
     st.dataframe(m_df_view.iloc[::-1].reset_index(drop=True), height=360, use_container_width=True)
 
-with tabs[3]:
+with tabs[4]:
     st.subheader("Takım Güç Sıralaması (Şut & xG Hibrit Katman A — Hücum, Savunma ve Belirsizlik)")
     only_active_2627 = st.checkbox("Sadece 2026/27 Aktif Süper Lig Takımlarını Göster (18 Takım)", value=True)
     active_2627_ids = set(
@@ -1086,7 +1192,7 @@ with tabs[3]:
         fig_scat.update_layout(height=500)
         st.plotly_chart(fig_scat, use_container_width=True)
 
-with tabs[4]:
+with tabs[5]:
     st.subheader("Kriptografik Tahmin Defteri ve Denetim Durumu")
     audit = verify_prediction_log(db_path=DB_PATH)
     if audit["valid"]:
@@ -1106,7 +1212,7 @@ with tabs[4]:
     else:
         st.info("Henüz günlüğe kaydedilmiş tahmin bulunmamaktadır.")
 
-with tabs[5]:
+with tabs[6]:
     st.subheader("🧪 2026/27 Süper Lig Simülasyon Testi, Hata Analizi & Model Geliştirme")
     st.caption(
         "2026/27 sezonunda oynanmış 72 maçın tamamı, kesinlikle maç saatinden önceki verilerle "

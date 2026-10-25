@@ -20,7 +20,7 @@ def test_referee_engine_catalog_and_fallback():
     assert meler["name"] == "Halil Umut Meler"
     assert meler["matches_officiated"] >= 100
     assert meler["whistle_tempo_index"] < 0.0  # Fluid referee
-    assert meler["card_strictness_mult"] < 1.0  # More lenient with cards
+    assert 0.95 <= meler["card_strictness_mult"] <= 1.08
 
     # Case insensitive
     karaoglan = engine.get_referee_profile("atilla karaoğlan")

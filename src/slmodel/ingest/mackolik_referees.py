@@ -384,9 +384,8 @@ def build_and_sync_referee_database(
                 ref["red_card_mult"], ref["home_card_bias"]
             ])
 
-        # 3. Match mappings for 2026/27 played matches
+        # 3. Match mappings for 2026/27 played matches (strictly genuine data, NO synthetic rotation fallback)
         cache_data = load_cached_referee_mappings()
-        known_names = [r["name"] for r in OFFLINE_REFEREE_CATALOG]
 
         # Get 2026/27 matches from DuckDB
         m2627 = con.execute("""
@@ -396,41 +395,48 @@ def build_and_sync_referee_database(
             ORDER BY kickoff_utc, match_id
         """).fetchdf()
 
-        # Deterministic rotation based on matchday and referee catalog
-        ref_cycle_idx = 0
+        # Pre-fetch weekly fixtures mapping if online fetching is enabled
+        weekly_matches_by_week: dict[int, list[dict[str, Any]]] = {}
+        if fetch_online:
+            for w in range(1, 11):
+                try:
+                    w_list = fetch_weekly_fixtures(w)
+                    if w_list:
+                        weekly_matches_by_week[w] = w_list
+                except Exception:
+                    pass
+
         updated_count = 0
+        verified_count = 0
 
         for _, row in m2627.iterrows():
             mid = int(row["match_id"])
             h_id = int(row["home_team_id"])
             a_id = int(row["away_team_id"])
+            mday = int(row["matchday"]) if pd.notna(row["matchday"]) else 1
             pair_key = f"{h_id}_{a_id}"
 
             assigned_ref = None
-            if pair_key in cache_data:
+            if pair_key in cache_data and cache_data[pair_key].get("name"):
                 assigned_ref = cache_data[pair_key]["name"]
-            elif fetch_online:
-                # Try to fetch from Mackolik fixture week
-                mday = int(row["matchday"]) if pd.notna(row["matchday"]) else 1
-                try:
-                    w_matches = fetch_weekly_fixtures(mday)
-                    for wm in w_matches:
-                        if wm.get("home_id") == h_id and wm.get("away_id") == a_id:
-                            ref_info = fetch_referee_for_mackolik_match(wm["mackolik_match_id"])
+                verified_count += 1
+            elif fetch_online and mday in weekly_matches_by_week:
+                # Find matching game in weekly fixtures
+                for wm in weekly_matches_by_week[mday]:
+                    if wm.get("home_id") == h_id and wm.get("away_id") == a_id:
+                        mk_mid = wm.get("mackolik_match_id")
+                        if mk_mid:
+                            ref_info = fetch_referee_for_mackolik_match(mk_mid)
+                            time.sleep(0.2)  # courteous request delay
                             if ref_info:
                                 assigned_ref = ref_info[1]
                                 cache_data[pair_key] = {"id": ref_info[0], "name": assigned_ref}
-                            break
-                except Exception:
-                    pass
+                                verified_count += 1
+                        break
 
-            if not assigned_ref:
-                # Assign from Süper Lig elite pool
-                assigned_ref = known_names[(ref_cycle_idx + h_id + a_id) % len(known_names)]
-
+            # Strictly set to genuine referee or NULL (never assign synthetic fallback)
             con.execute("UPDATE matches SET referee = ? WHERE match_id = ?", [assigned_ref, mid])
             updated_count += 1
-            ref_cycle_idx += 1
 
         save_cached_referee_mappings(cache_data)
 
@@ -457,12 +463,24 @@ def build_and_sync_referee_database(
             red_mean = float(r["red_mean"]) if pd.notna(r["red_mean"]) else LEAGUE_AVG_RED
             diff_mean = float(r["away_yellow_diff"]) if pd.notna(r["away_yellow_diff"]) else 0.0
 
+            # Combine with baseline catalog prior
+            prior_cat = next((p for p in OFFLINE_REFEREE_CATALOG if p["name"].lower() == ref_name.lower()), None)
+            if prior_cat:
+                n_prior = prior_cat["matches_officiated"]
+                n_tot = n_prior + n_m
+                comb_fouls = (n_prior * prior_cat["avg_fouls"] + n_m * f_mean) / n_tot
+                comb_yellow = (n_prior * prior_cat["avg_yellow"] + n_m * y_mean) / n_tot
+                comb_red = (n_prior * prior_cat["avg_red"] + n_m * red_mean) / n_tot
+            else:
+                n_tot = n_m
+                comb_fouls, comb_yellow, comb_red = f_mean, y_mean, red_mean
+
             # James-Stein / Empirical Bayes shrinkage toward league mean
             shrink_k = 6.0
-            w = n_m / (n_m + shrink_k)
-            eb_fouls = w * f_mean + (1.0 - w) * LEAGUE_AVG_FOULS
-            eb_yellow = w * y_mean + (1.0 - w) * LEAGUE_AVG_YELLOW
-            eb_red = w * red_mean + (1.0 - w) * LEAGUE_AVG_RED
+            w = n_tot / (n_tot + shrink_k)
+            eb_fouls = w * comb_fouls + (1.0 - w) * LEAGUE_AVG_FOULS
+            eb_yellow = w * comb_yellow + (1.0 - w) * LEAGUE_AVG_YELLOW
+            eb_red = w * comb_red + (1.0 - w) * LEAGUE_AVG_RED
 
             w_idx = float((eb_fouls - LEAGUE_AVG_FOULS) / LEAGUE_STD_FOULS)
             c_mult = float(eb_yellow / LEAGUE_AVG_YELLOW)
@@ -472,7 +490,7 @@ def build_and_sync_referee_database(
 
             con.execute("""
                 UPDATE referees
-                SET matches_officiated = matches_officiated + ?,
+                SET matches_officiated = ?,
                     avg_fouls = ?,
                     avg_yellow = ?,
                     avg_red = ?,
@@ -483,7 +501,7 @@ def build_and_sync_referee_database(
                     home_card_bias = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE name = ?
-            """, [n_m, eb_fouls, eb_yellow, eb_red, b_pts, w_idx, c_mult, r_mult, h_bias, ref_name])
+            """, [n_tot, eb_fouls, eb_yellow, eb_red, b_pts, w_idx, c_mult, r_mult, h_bias, ref_name])
 
     finally:
         con.close()
@@ -491,5 +509,6 @@ def build_and_sync_referee_database(
     return {
         "status": "success",
         "updated_matches": updated_count,
+        "verified_referees": verified_count,
         "referees_count": len(OFFLINE_REFEREE_CATALOG),
     }

@@ -4,6 +4,7 @@ from typing import Any, Optional
 import duckdb
 import numpy as np
 import pandas as pd
+from slmodel.config import get_model_config
 from slmodel.simulate.score_matrix import score_matrix, posterior_predictive_score_matrix
 from slmodel.simulate.markets import one_x_two, over_under, both_teams_to_score, most_likely_scores
 
@@ -208,6 +209,80 @@ class PlayerRatingEngine:
             "active_count": len(active_players),
             "missing_starters": missing_starters,
             "substitutions": new_insertions,
+        }
+
+    def compute_availability_lineup_adjustment(
+        self,
+        team_id: int,
+        match_id: Optional[int] = None,
+        as_of: Optional[Any] = None,
+    ) -> dict[str, Any]:
+        """
+        Compute expected attack and defense shifts from player availability
+        (manual overrides, injuries, suspensions) compared to the benchmark starting 11.
+        Applies Bayesian expected value blending for doubtful players and enforces hard bounds.
+        """
+        from slmodel.models.availability import AvailabilityResolver
+        cfg = get_model_config()
+
+        resolver = AvailabilityResolver(db_path=self.db_path)
+        roster_avail = resolver.resolve_team_availability(team_id, match_id=match_id, as_of=as_of)
+        avail_map = {p["player_id"]: p for p in roster_avail}
+
+        benchmark_starters = self.get_default_lineup(team_id)
+        candidate_bench = [p for p in roster_avail if p["player_id"] not in set(s["player_id"] for s in benchmark_starters)]
+
+        delta_att_total = 0.0
+        delta_def_total = 0.0
+        absent_starters = []
+
+        max_single = cfg.availability.max_single_player_lambda_shift
+        max_team = cfg.availability.max_team_lambda_shift
+
+        for starter in benchmark_starters:
+            pid = starter["player_id"]
+            p_rec = avail_map.get(pid, starter)
+            p_play = float(p_rec.get("p_play", 1.0))
+
+            if p_play < 0.99:
+                absent_starters.append({
+                    "player_id": pid,
+                    "name": starter["name"],
+                    "position": starter["position"],
+                    "status": p_rec.get("status", "out"),
+                    "p_play": p_play,
+                    "reason": p_rec.get("reason", ""),
+                })
+
+                # Quality drop vs candidate substitute
+                subs = self.get_candidate_substitutes(team_id, pid)
+                best_sub = subs[0] if subs else None
+                sub_att = best_sub["att_rating"] if best_sub else (starter["att_rating"] * 0.70)
+                sub_def = best_sub["def_rating"] if best_sub else (starter["def_rating"] * 0.70)
+
+                # Expected delta: (1 - p_play) * (sub_rating - starter_rating)
+                prob_absent = 1.0 - p_play
+                d_att = prob_absent * (sub_att - starter["att_rating"])
+                d_def = prob_absent * (sub_def - starter["def_rating"])
+
+                # Enforce single player bound
+                d_att = float(np.clip(d_att, -max_single, max_single))
+                d_def = float(np.clip(d_def, -max_single, max_single))
+
+                delta_att_total += d_att
+                delta_def_total += d_def
+
+        # Enforce team aggregate bound
+        delta_att_bounded = float(np.clip(delta_att_total, -max_team, max_team))
+        delta_def_bounded = float(np.clip(delta_def_total, -max_team, max_team))
+
+        return {
+            "team_id": team_id,
+            "delta_att": delta_att_bounded,
+            "delta_def": delta_def_bounded,
+            "absent_starters_count": len(absent_starters),
+            "absent_starters": absent_starters,
+            "is_shifted": bool(len(absent_starters) > 0),
         }
 
     def simulate_match_with_lineups(

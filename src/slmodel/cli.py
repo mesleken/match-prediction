@@ -21,8 +21,12 @@ import rapidfuzz.process
 from slmodel.ingest.footballdata import FootballDataFetcher
 from slmodel.ingest.sync import sync_latest_data, get_last_sync_info
 from slmodel.etl.transform import WarehouseETL
-from slmodel.evaluate.backtest import WalkForwardBacktest
+from slmodel.evaluate.backtest import WalkForwardBacktest, AblationRunner
 from slmodel.evaluate.season_stats import compute_season_statistics, format_season_label
+from slmodel.ingest.external_fixtures import ExternalFixturesClient
+from slmodel.ingest.weather import WeatherIngestClient
+from slmodel.ingest.api_football import ApiFootballClient
+from slmodel.models.availability import AvailabilityResolver
 from slmodel.models.dixon_coles import DixonColesModel
 from slmodel.models.player_ratings import PlayerRatingEngine
 from slmodel.models.market import devig_shin, invert_lambdas, blend_lambdas
@@ -1126,6 +1130,138 @@ def referees_command(
             f" {r['name']:25s} | {r.get('matches_officiated', 0):3d} | {tau:+19.2f} | {r.get('avg_fouls', 26.5):9.1f} | {r.get('avg_yellow', 4.3):9.2f} | {r.get('avg_red', 0.25):7.2f} | {b_pts:10.1f} | {tempo_tag} / {card_tag}"
         )
     typer.secho("=" * 94 + "\n", fg=typer.colors.CYAN)
+
+
+@app.command(name="sync-external")
+def sync_external_command(
+    fixtures: bool = typer.Option(True, "--fixtures/--no-fixtures", help="Sync European & Cup fixtures"),
+    weather: bool = typer.Option(True, "--weather/--no-weather", help="Sync Open-Meteo stadium weather"),
+    availability: bool = typer.Option(True, "--availability/--no-availability", help="Probe & sync API-Football injuries"),
+    season: str = typer.Option("2627", "--season", help="Target season code"),
+) -> None:
+    """Synchronize external data sources: European fixtures, Open-Meteo weather, and injury snapshots."""
+    typer.secho("\n🌍 DIŞ VERİ KAYNAKLARI SENKRONİZASYONU (V3 ALTYAPISI)", fg=typer.colors.CYAN, bold=True)
+
+    if fixtures:
+        typer.echo("  [1/3] ⚽ Mackolik Avrupa (UEFA) ve Kupa Fikstürleri taranıyor...")
+        ext_client = ExternalFixturesClient()
+        res_fix = ext_client.sync_all_external_fixtures()
+        typer.secho(f"        -> {res_fix['synced_external_fixtures']} lig dışı fikstür kaydedildi ({res_fix['competitions_tracked']} turnuva).", fg=typer.colors.GREEN)
+
+    if weather:
+        typer.echo(f"  [2/3] 🌦️  Open-Meteo stadyum saatlik hava verileri ({season}) senkronize ediliyor...")
+        w_client = WeatherIngestClient()
+        res_w = w_client.sync_season_weather(season=season)
+        typer.secho(f"        -> {res_w.get('synced_matches', 0)} maç için hava verisi eşleştirildi.", fg=typer.colors.GREEN)
+
+    if availability:
+        typer.echo("  [3/3] 🩺 API-Football sakatlık/ceza durumu yoklanıyor...")
+        api_client = ApiFootballClient()
+        probe = api_client.probe_account_entitlement()
+        if probe.get("status") == "no_key":
+            typer.secho("        -> ℹ️  API_FOOTBALL_KEY tanımlanmamış. Manuel giriş modu devrede.", fg=typer.colors.YELLOW)
+        elif probe.get("season_locked"):
+            typer.secho(f"        -> 🔒 {probe.get('message')}. Manuel giriş modu devrede.", fg=typer.colors.YELLOW)
+        else:
+            inj_res = api_client.sync_injuries_to_snapshots()
+            typer.secho(f"        -> ✅ {inj_res.get('synced_injuries', 0)} sakatlık/ceza kaydı işlendi.", fg=typer.colors.GREEN)
+
+    typer.secho("Tüm dış veri kaynakları başarıyla senkronize edildi!\n", fg=typer.colors.BRIGHT_GREEN, bold=True)
+
+
+@app.command(name="availability")
+def availability_command(
+    action: str = typer.Argument("list", help="list, set, or clear"),
+    team_id: Optional[int] = typer.Option(None, "--team", "-t", help="Team ID"),
+    player_id: Optional[int] = typer.Option(None, "--player", "-p", help="Player ID"),
+    status: Optional[str] = typer.Option(None, "--status", "-s", help="Status: out, doubtful, available"),
+    note: Optional[str] = typer.Option(None, "--note", help="Reason note"),
+    override_id: Optional[int] = typer.Option(None, "--id", help="Override ID to clear"),
+) -> None:
+    """Manage player absences and manual overrides."""
+    resolver = AvailabilityResolver()
+
+    if action == "list":
+        overrides = resolver.list_active_overrides(team_id=team_id)
+        if not overrides:
+            typer.echo("Aktif manuel eksik kaydı bulunmuyor.")
+            return
+
+        typer.secho("\n📋 AKTİF MANUEL OYUNCU EKSİK / DEVAMSIZLIK LİSTESİ", fg=typer.colors.CYAN, bold=True)
+        typer.echo(" ID            | Takım           | Oyuncu               | Poz | Durum    | Not")
+        typer.echo("-" * 85)
+        for o in overrides:
+            st_color = typer.colors.RED if o["status"] == "out" else typer.colors.YELLOW
+            typer.echo(f" {o['override_id']} | {o['team_name']:15s} | {o['player_name']:20s} | {o['position']:3s} | {o['status']:8s} | {o['note'] or '-'}")
+        typer.echo("")
+
+    elif action == "set":
+        if not team_id or not player_id or not status:
+            typer.secho("Hata: 'set' için --team, --player ve --status zorunludur.", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+        oid = resolver.set_manual_override(
+            team_id=team_id,
+            player_id=player_id,
+            status=status,
+            note=note,
+        )
+        typer.secho(f"✅ Manuel override kaydedildi (ID: {oid}). Oyuncu durumu: {status.upper()}", fg=typer.colors.GREEN)
+
+    elif action == "clear":
+        if not override_id:
+            typer.secho("Hata: 'clear' için --id zorunludur.", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+        ok = resolver.clear_manual_override(override_id)
+        if ok:
+            typer.secho(f"✅ Manuel override {override_id} kaldırıldı.", fg=typer.colors.GREEN)
+        else:
+            typer.secho(f"Hata: {override_id} kaldırılamadı.", fg=typer.colors.RED)
+
+
+@app.command(name="ablate")
+def ablate_command(
+    factors: str = typer.Option(
+        "referee,euro_fatigue,venue_edge,weather,availability",
+        "--factors",
+        "-f",
+        help="Comma-separated list of factors to evaluate"
+    ),
+    val_season: str = typer.Option("2526", "--val", help="Validation season"),
+    holdout_season: str = typer.Option("2627", "--holdout", help="Holdout season"),
+) -> None:
+    """Run systematic leave-one-out feature ablation study and significance tests."""
+    runner = AblationRunner(val_season=val_season, holdout_season=holdout_season)
+    factor_list = [f.strip() for f in factors.split(",") if f.strip()]
+
+    typer.secho("\n🔬 SİSTEMATİK MODEL ÖZELLİK ABLASYON ANALİZİ (LEAVE-ONE-OUT)", fg=typer.colors.CYAN, bold=True)
+    typer.echo(f"  Doğrulama Sezonu: {val_season} | Dokunulmamış Holdout Sezonu: {holdout_season}")
+    typer.echo(f"  İncelenen Faktörler: {', '.join(factor_list)}\n")
+
+    res = runner.run_study(factors_to_test=factor_list)
+
+    typer.echo(f"  Baz Model Out-of-Sample RPS : {res['baseline_rps']:.4f}")
+    typer.echo(f"  Baz Model Out-of-Sample NLL : {res['baseline_logloss']:.4f}")
+    typer.echo(f"  Değerlendirilen Maç Sayısı   : {res['evaluated_matches']}")
+    typer.echo("")
+
+    typer.secho("=" * 105, fg=typer.colors.CYAN)
+    typer.echo(" Faktör             | RPS Farkı (Δ) | NLL Farkı (Δ) | Bootstrap p | %95 Güven Aralığı       | Karar ve Durum")
+    typer.echo("-" * 105)
+
+    for rep in res["factor_reports"]:
+        f_name = rep["factor"]
+        rps_d = rep["rps_delta"]
+        ll_d = rep["logloss_delta"]
+        pval = rep["bootstrap_p_value"]
+        ci = f"[{rep['ci_95'][0]:+.4f}, {rep['ci_95'][1]:+.4f}]"
+        st = rep["status"]
+
+        color = typer.colors.GREEN if "SIGNIFICANT" in st else (typer.colors.YELLOW if "NEUTRAL" in st else typer.colors.RED)
+        typer.secho(
+            f" {f_name:18s} | {rps_d:+13.5f} | {ll_d:+13.5f} | {pval:11.4f} | {ci:23s} | {st}",
+            fg=color,
+        )
+    typer.secho("=" * 105 + "\n", fg=typer.colors.CYAN)
 
 
 if __name__ == "__main__":

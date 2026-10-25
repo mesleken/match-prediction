@@ -166,7 +166,8 @@ def test_season_2627_statistics_and_xg():
 def test_sync_module_and_metadata(tmp_path):
     """Verify data synchronization runner and metadata tracking."""
     meta_file = str(tmp_path / "sync_meta.json")
-    res = sync_latest_data(seasons=["2627"], sync_fixtures=False, meta_path=meta_file)
+    db_file = str(tmp_path / "test_sync.duckdb")
+    res = sync_latest_data(seasons=["2627"], sync_fixtures=False, meta_path=meta_file, db_path=db_file)
     assert res["db_matches"] > 0
     assert "timestamp_utc" in res
 

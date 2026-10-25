@@ -191,6 +191,14 @@ class WarehouseETL:
         self.con.execute("DELETE FROM team_match_stats")
 
         existing_tables = [t[0] for t in self.con.execute("SHOW TABLES").fetchall()]
+        if "availability_overrides" in existing_tables:
+            self.con.execute("DELETE FROM availability_overrides")
+        if "availability_snapshots" in existing_tables:
+            self.con.execute("DELETE FROM availability_snapshots")
+        if "match_weather" in existing_tables:
+            self.con.execute("DELETE FROM match_weather")
+        if "external_fixtures" in existing_tables:
+            self.con.execute("DELETE FROM external_fixtures")
         if "player_match_stats" in existing_tables:
             self.con.execute("DELETE FROM player_match_stats")
         if "player_season_stats" in existing_tables:
@@ -399,10 +407,17 @@ class WarehouseETL:
 
         self.con.commit()
 
-        # Re-populate players and synergy tables
+        # Re-populate players, synergy tables, and cached referees
         try:
             seed_players_database(db_path=str(self.db_path))
         except Exception:
+            pass
+
+        try:
+            from slmodel.ingest.mackolik_referees import build_and_sync_referee_database
+            build_and_sync_referee_database(db_path=str(self.db_path), fetch_online=False)
+        except Exception:
+            pass
             pass
 
         stats["matches"] = len(matches_rows)

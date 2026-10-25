@@ -15,6 +15,7 @@ def sync_latest_data(
     league: str = "T1",
     sync_fixtures: bool = True,
     meta_path: str = "data/sync_meta.json",
+    db_path: str = "data/warehouse.duckdb",
 ) -> dict[str, Any]:
     """
     Fetch the latest raw match CSV files from football-data.co.uk with cache bypass (force_refresh),
@@ -61,7 +62,7 @@ def sync_latest_data(
             fixtures_info = {"error": str(e)}
 
     # Transform all cached seasons into DuckDB
-    etl = WarehouseETL()
+    etl = WarehouseETL(db_path=db_path)
     stats = etl.transform_all_cached_seasons()
     etl.close()
 

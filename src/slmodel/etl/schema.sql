@@ -188,3 +188,66 @@ CREATE TABLE IF NOT EXISTS referees (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- External fixtures (UEFA Champions League, Europa League, Conference League, Turkish Cup)
+CREATE TABLE IF NOT EXISTS external_fixtures (
+    ext_id TEXT PRIMARY KEY,
+    team_id INTEGER NOT NULL REFERENCES teams(team_id),
+    competition TEXT NOT NULL,
+    competition_season_id INTEGER,
+    kickoff_utc TIMESTAMP NOT NULL,
+    opponent TEXT,
+    is_home BOOLEAN,
+    status TEXT,
+    source TEXT NOT NULL,
+    fetched_at TIMESTAMP NOT NULL
+);
+
+-- Match weather from Open-Meteo (archive and forecast)
+CREATE TABLE IF NOT EXISTS match_weather (
+    match_id INTEGER PRIMARY KEY REFERENCES matches(match_id),
+    temp_c DOUBLE,
+    precip_mm DOUBLE,
+    wind_kmh DOUBLE,
+    humidity_pct DOUBLE,
+    kind TEXT CHECK (kind IN ('archive', 'forecast')),
+    fetched_at TIMESTAMP NOT NULL
+);
+
+-- Player availability snapshots (API-Football or derived with strict timestamp)
+CREATE TABLE IF NOT EXISTS availability_snapshots (
+    snapshot_id BIGINT PRIMARY KEY,
+    team_id INTEGER NOT NULL REFERENCES teams(team_id),
+    player_id INTEGER,
+    player_name TEXT NOT NULL,
+    status TEXT CHECK (status IN ('injured', 'suspended', 'doubtful', 'out', 'available')),
+    reason TEXT,
+    expected_return DATE,
+    source TEXT CHECK (source IN ('api_football', 'derived', 'manual')),
+    fetched_at TIMESTAMP NOT NULL
+);
+
+-- Manual player availability overrides via dashboard / CLI
+CREATE TABLE IF NOT EXISTS availability_overrides (
+    override_id BIGINT PRIMARY KEY,
+    team_id INTEGER NOT NULL REFERENCES teams(team_id),
+    player_id INTEGER NOT NULL REFERENCES players(player_id),
+    status TEXT CHECK (status IN ('out', 'doubtful', 'available')),
+    match_id INTEGER,
+    note TEXT,
+    created_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP,
+    active BOOLEAN DEFAULT TRUE
+);
+
+-- Ingestion audit & quota log
+CREATE TABLE IF NOT EXISTS ingest_log (
+    log_id BIGINT PRIMARY KEY,
+    source TEXT NOT NULL,
+    endpoint TEXT NOT NULL,
+    requested_at TIMESTAMP NOT NULL,
+    http_status INTEGER,
+    quota_remaining INTEGER,
+    detail TEXT
+);
+
+

@@ -516,6 +516,10 @@ def seed_players_database(db_path: str = "data/warehouse.duckdb", json_out: str 
     """)
 
     existing_tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]
+    if "availability_overrides" in existing_tables:
+        con.execute("DELETE FROM availability_overrides")
+    if "availability_snapshots" in existing_tables:
+        con.execute("DELETE FROM availability_snapshots")
     if "player_match_stats" in existing_tables:
         con.execute("DELETE FROM player_match_stats")
     if "player_season_stats" in existing_tables:

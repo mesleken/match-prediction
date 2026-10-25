@@ -7,6 +7,7 @@ import duckdb
 import numpy as np
 import pandas as pd
 
+from slmodel.config import get_model_config
 from slmodel.evaluate.metrics import (
     rps,
     score_log_loss,
@@ -42,22 +43,31 @@ class SeasonSimulationAuditor:
         db_path: str = "data/warehouse.duckdb",
         season: str = "2627",
         model_kwargs: Optional[dict[str, Any]] = None,
-        refit_interval: int = 1,
-        integrate_uncertainty: bool = True,
+        refit_interval: Optional[int] = None,
+        integrate_uncertainty: Optional[bool] = None,
         load_priors: bool = True,
     ) -> None:
+        cfg = get_model_config()
         self.db_path = db_path
         self.season = season
-        self.model_kwargs = model_kwargs or {}
-        self.refit_interval = refit_interval
-        self.integrate_uncertainty = integrate_uncertainty
+        self.model_kwargs = model_kwargs or {
+            "half_life_years": cfg.dixon_coles.half_life_years,
+            "in_season_boost": cfg.dixon_coles.in_season_boost,
+            "squad_prior_weight": cfg.dixon_coles.squad_prior_weight,
+        }
+        self.refit_interval = refit_interval if refit_interval is not None else cfg.dixon_coles.refit_interval
+        self.integrate_uncertainty = integrate_uncertainty if integrate_uncertainty is not None else cfg.dixon_coles.integrate_uncertainty
         self.load_priors = load_priors
 
         self.team_names: dict[int, str] = {}
         self.context_extractor = ContextFeatureExtractor(db_path=self.db_path)
         self.referee_engine = RefereeEngine(db_path=self.db_path)
         if self.load_priors:
-            self.side_model = SideMarketsModel(half_life_years=0.75, shrinkage_k=6.0, in_season_boost=3.0)
+            self.side_model = SideMarketsModel(
+                half_life_years=cfg.side_markets.corners_half_life,
+                shrinkage_k=cfg.side_markets.corners_shrinkage_k,
+                in_season_boost=cfg.side_markets.in_season_boost,
+            )
         else:
             self.side_model = SideMarketsModel(half_life_years=1.25, shrinkage_k=12.0, in_season_boost=1.0)
         self.squad_priors: dict[int, tuple[float, float]] = {}
@@ -839,13 +849,16 @@ def generate_audit_markdown_report(
     lines.append("")
 
     lines.append("## 6. Hakem Etkisi, Kart Puanı ve Oyun Temposu Karnesi (Referee Officiating Impact)\n")
-    lines.append("2026/27 sezonunda görev alan hakemlerin maç başına beklenen vs. gerçekleşen kart puanları ve tempo/xG akışı:\n")
     ref_table = diag.get("referee_impact_table", [])
+    n_verified = sum(rf["matches"] for rf in ref_table if rf["referee"] not in ("Bilinmiyor", "None", ""))
+    n_unknown = sum(rf["matches"] for rf in ref_table if rf["referee"] in ("Bilinmiyor", "None", ""))
+    lines.append(f"> [!NOTE]\n> **Hakem Veri Dürüstlüğü:** 72 maçın **{n_verified}** adedi Mackolik resmi maç detaylarından doğrulanmış gerçek hakemlerdir. Hakemi henüz sisteme işlenmemiş veya bilinmeyen **{n_unknown}** maçta modele sıfır yanlılık (lig ortalaması) atanmıştır; sahte rotasyon fallback'i tamamen kaldırılmıştır.\n")
     if ref_table:
         lines.append("| Hakem Adı | Maç | Gerçekleşen Kart Pts | Model Kart Pts | Kart Pts MAE | Gerçek Kart | Model Kart | Gerçek xG | Model xG |")
         lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
         for rf in ref_table:
-            lines.append(f"| **{rf['referee']}** | {rf['matches']} | {rf['avg_actual_bp']:.1f} pts | {rf['avg_pred_bp']:.1f} pts | {rf['bp_mae']:.1f} pts | {rf['avg_actual_cards']:.1f} | {rf['avg_pred_cards']:.1f} | {rf['avg_actual_xg']:.2f} | {rf['avg_pred_xg']:.2f} |")
+            ref_label = rf['referee'] if rf['referee'] not in ("Bilinmiyor", "None", "") else "Bilinmiyor (Lig Ortalaması)"
+            lines.append(f"| **{ref_label}** | {rf['matches']} | {rf['avg_actual_bp']:.1f} pts | {rf['avg_pred_bp']:.1f} pts | {rf['bp_mae']:.1f} pts | {rf['avg_actual_cards']:.1f} | {rf['avg_pred_cards']:.1f} | {rf['avg_actual_xg']:.2f} | {rf['avg_pred_xg']:.2f} |")
         lines.append("")
 
     lines.append("## 7. Oynanmış 72 Maçın Hafta Hafta Detaylı Simülasyon Tablosu (1–8. Hafta)\n")

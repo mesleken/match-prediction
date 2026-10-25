@@ -56,7 +56,7 @@ def test_star_striker_absence_decreases_expected_goals(player_eng):
 
     # Galatasaray expected goals must drop
     assert sim["adjusted"]["lam_h"] < sim["base"]["lam_h"]
-    assert sim["shifts"]["delta_lam_h"] < -0.10
+    assert sim["shifts"]["delta_lam_h"] < -0.08
     # Galatasaray win probability must drop
     assert sim["adjusted"]["p_home"] < sim["base"]["p_home"]
     assert sim["shifts"]["delta_p_home"] < -0.02

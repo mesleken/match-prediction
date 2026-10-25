@@ -159,7 +159,8 @@ class RefereeEngine:
                 if has_stats:
                     y_tot = ref_matches["hy"].fillna(0) + ref_matches["ay"].fillna(0)
                     r_tot = ref_matches["hr"].fillna(0) + ref_matches["ar"].fillna(0) if "hr" in ref_matches.columns else 0.0
-                    f_tot = ref_matches["hf"].fillna(0) + ref_matches["af"].fillna(0) if "hf" in ref_matches.columns else pd.Series([LEAGUE_AVG_FOULS] * n_prior)
+                    base_f = float(base_profile.get("avg_fouls", LEAGUE_AVG_FOULS))
+                    f_tot = ref_matches["hf"].fillna(0) + ref_matches["af"].fillna(0) if "hf" in ref_matches.columns else pd.Series([base_f] * n_prior)
 
                     f_mean = float(f_tot.mean())
                     y_mean = float(y_tot.mean())
@@ -167,9 +168,9 @@ class RefereeEngine:
 
                     shrink_k = 6.0
                     w = n_prior / (n_prior + shrink_k)
-                    eb_fouls = w * f_mean + (1.0 - w) * LEAGUE_AVG_FOULS
-                    eb_yellow = w * y_mean + (1.0 - w) * LEAGUE_AVG_YELLOW
-                    eb_red = w * red_mean + (1.0 - w) * LEAGUE_AVG_RED
+                    eb_fouls = w * f_mean + (1.0 - w) * base_f
+                    eb_yellow = w * y_mean + (1.0 - w) * float(base_profile.get("avg_yellow", LEAGUE_AVG_YELLOW))
+                    eb_red = w * red_mean + (1.0 - w) * float(base_profile.get("avg_red", LEAGUE_AVG_RED))
 
                     w_idx = float((eb_fouls - LEAGUE_AVG_FOULS) / LEAGUE_STD_FOULS)
                     c_mult = float(eb_yellow / LEAGUE_AVG_YELLOW)

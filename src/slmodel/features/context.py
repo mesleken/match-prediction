@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from slmodel.config import get_model_config
+
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate the great-circle distance between two points on the Earth (in km)."""
@@ -47,9 +49,11 @@ class ContextFeatureExtractor:
     ) -> None:
         self.db_path = db_path
         self.derbies_path = derbies_path
+        self.cfg = get_model_config()
         self._referee_engine = None
         self._load_derbies()
         self._load_stadiums()
+        self._load_external_fixtures()
 
     def _load_derbies(self) -> None:
         p = Path(self.derbies_path)
@@ -71,6 +75,27 @@ class ContextFeatureExtractor:
         finally:
             con.close()
 
+    def _load_external_fixtures(self) -> None:
+        """Load external European & Cup fixtures for unified calendar fatigue analysis."""
+        self.external_fixtures_df: pd.DataFrame = pd.DataFrame()
+        try:
+            con = duckdb.connect(self.db_path, read_only=True)
+            tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]
+            if "external_fixtures" in tables:
+                self.external_fixtures_df = con.execute("""
+                    SELECT team_id, kickoff_utc, competition, is_home, status
+                    FROM external_fixtures
+                """).fetchdf()
+                if not self.external_fixtures_df.empty:
+                    k_s = pd.to_datetime(self.external_fixtures_df["kickoff_utc"])
+                    if hasattr(k_s.dt, "tz") and k_s.dt.tz is not None:
+                        self.external_fixtures_df["kickoff_utc"] = k_s.dt.tz_convert("UTC").dt.tz_localize(None)
+                    else:
+                        self.external_fixtures_df["kickoff_utc"] = k_s
+            con.close()
+        except Exception:
+            self.external_fixtures_df = pd.DataFrame()
+
     def is_derby(self, home_team_id: int, away_team_id: int) -> bool:
         return (home_team_id, away_team_id) in self.derby_pairs
 
@@ -81,6 +106,7 @@ class ContextFeatureExtractor:
         kickoff_utc: datetime,
         matches_history: pd.DataFrame,
         referee_name: Optional[str] = None,
+        match_id: Optional[int] = None,
     ) -> dict[str, float]:
         """
         Extract strictly as-of context features given prior match history.
@@ -108,32 +134,54 @@ class ContextFeatureExtractor:
 
         prior = prior_history[prior_history["kickoff_utc"] < target_ts]
 
-        # 1. Rest days calculation
-        def get_last_match_date(team_id: int) -> Optional[pd.Timestamp]:
+        # 1. Rest days and match congestion across unified calendar (league + European / Cup)
+        def get_last_any_match_info(team_id: int) -> tuple[Optional[pd.Timestamp], bool, int]:
+            """Returns (last_kickoff, is_recent_away_euro, n_14d_matches)."""
+            all_dates: list[tuple[pd.Timestamp, bool]] = []
             team_prior = prior[(prior["home_team_id"] == team_id) | (prior["away_team_id"] == team_id)]
-            if len(team_prior) == 0:
-                return None
-            return pd.to_datetime(team_prior["kickoff_utc"].max())
+            for _, r in team_prior.iterrows():
+                all_dates.append((pd.to_datetime(r["kickoff_utc"]), False))
 
-        h_last = get_last_match_date(home_team_id)
-        a_last = get_last_match_date(away_team_id)
+            if not self.external_fixtures_df.empty:
+                ext_prior = self.external_fixtures_df[
+                    (self.external_fixtures_df["team_id"] == team_id) &
+                    (self.external_fixtures_df["kickoff_utc"] < target_ts)
+                ]
+                for _, r in ext_prior.iterrows():
+                    is_away_euro = (not bool(r.get("is_home", True))) and ("UEFA" in str(r.get("competition", "")))
+                    all_dates.append((pd.to_datetime(r["kickoff_utc"]), is_away_euro))
+
+            if not all_dates:
+                return None, False, 0
+
+            all_dates.sort(key=lambda x: x[0])
+            last_dt, last_away_euro = all_dates[-1]
+            diff_days = (target_ts - last_dt).total_seconds() / 86400.0
+            is_recent_away_euro = bool(last_away_euro and diff_days <= 4.0)
+
+            w_start = target_ts - pd.Timedelta(days=14)
+            n_14d = sum(1 for d, _ in all_dates if d >= w_start)
+
+            return last_dt, is_recent_away_euro, n_14d
+
+        h_last, h_away_euro_recent, h_cong = get_last_any_match_info(home_team_id)
+        a_last, a_away_euro_recent, a_cong = get_last_any_match_info(away_team_id)
 
         h_rest = (target_ts - h_last).total_seconds() / 86400.0 if h_last is not None else 7.0
         a_rest = (target_ts - a_last).total_seconds() / 86400.0 if a_last is not None else 7.0
 
-        # Bound rest days to reasonable season range
+        # Bound rest days to realistic season limits
         h_rest = float(np.clip(h_rest, 2.0, 21.0))
         a_rest = float(np.clip(a_rest, 2.0, 21.0))
 
         h_sat_rest = saturating_rest(h_rest)
         a_sat_rest = saturating_rest(a_rest)
         net_rest_advantage = h_sat_rest - a_sat_rest
-
-        # 2. 14-day match congestion
-        window_start = target_ts - pd.Timedelta(days=14)
-        h_cong = len(prior[((prior["home_team_id"] == home_team_id) | (prior["away_team_id"] == home_team_id)) & (prior["kickoff_utc"] >= window_start)])
-        a_cong = len(prior[((prior["home_team_id"] == away_team_id) | (prior["away_team_id"] == away_team_id)) & (prior["kickoff_utc"] >= window_start)])
         net_congestion = float(h_cong - a_cong)
+
+        # European fatigue penalty (only active if euro_fatigue_enabled in config)
+        euro_fatigue_penalty_h = -0.025 if (self.cfg.external_factors.euro_fatigue_enabled and h_away_euro_recent) else 0.0
+        euro_fatigue_penalty_a = -0.025 if (self.cfg.external_factors.euro_fatigue_enabled and a_away_euro_recent) else 0.0
 
         # 3. Geography & Stadium Shock
         h_stad = self.stadiums.get(home_team_id, {"lat": 41.0, "lon": 29.0, "altitude_m": 50.0})
@@ -278,6 +326,31 @@ class ContextFeatureExtractor:
             ref_whistle = flow["whistle_tempo_index"]
             ref_card_mult = float(prof.get("card_strictness_mult", 1.0))
 
+        # 7. Weather Conditions (from match_weather)
+        weather_delta_pace = 0.0
+        weather_temp = 18.0
+        weather_precip = 0.0
+        weather_wind = 12.0
+        if match_id is not None:
+            try:
+                con = duckdb.connect(self.db_path, read_only=True)
+                w_row = con.execute("SELECT temp_c, precip_mm, wind_kmh FROM match_weather WHERE match_id = ?", [match_id]).fetchone()
+                con.close()
+                if w_row:
+                    weather_temp = float(w_row[0]) if w_row[0] is not None else 18.0
+                    weather_precip = float(w_row[1]) if w_row[1] is not None else 0.0
+                    weather_wind = float(w_row[2]) if w_row[2] is not None else 12.0
+
+                    if self.cfg.external_factors.weather_enabled:
+                        if weather_precip > 2.0:
+                            weather_delta_pace -= 0.025
+                        if weather_wind > 35.0:
+                            weather_delta_pace -= 0.020
+                        if weather_temp < 2.0 or weather_temp > 32.0:
+                            weather_delta_pace -= 0.015
+            except Exception:
+                pass
+
         return {
             "home_rest_days": h_rest,
             "away_rest_days": a_rest,
@@ -285,6 +358,12 @@ class ContextFeatureExtractor:
             "home_14d_matches": float(h_cong),
             "away_14d_matches": float(a_cong),
             "net_congestion": net_congestion,
+            "euro_fatigue_h": euro_fatigue_penalty_h,
+            "euro_fatigue_a": euro_fatigue_penalty_a,
+            "weather_temp": weather_temp,
+            "weather_precip": weather_precip,
+            "weather_wind": weather_wind,
+            "weather_delta_pace": weather_delta_pace,
             "travel_distance_km": distance_km,
             "altitude_diff_m": altitude_diff_m,
             "is_derby": derby_flag,
