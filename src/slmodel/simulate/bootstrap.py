@@ -139,7 +139,24 @@ def bayesian_bootstrap_prediction(
         raise ValueError(f"Insufficient matches for bootstrap: {n_matches}")
 
     # Fit base model once to warm-start all bootstrap replicates
-    base_model = DixonColesModel(half_life_years=half_life_years)
+    from slmodel.config import get_model_config
+    cfg = get_model_config()
+    base_model = DixonColesModel(
+        half_life_years=half_life_years or cfg.dixon_coles.half_life_years,
+        season_carryover=cfg.dixon_coles.season_carryover,
+        in_season_boost=cfg.dixon_coles.in_season_boost,
+        shot_alpha=cfg.dixon_coles.shot_alpha,
+        ridge_att=cfg.dixon_coles.ridge_att,
+        ridge_def=cfg.dixon_coles.ridge_def,
+        squad_prior_weight=cfg.dixon_coles.squad_prior_weight,
+        early_season_prior_weight=cfg.dixon_coles.early_season_prior_weight,
+        form_momentum_weight=cfg.dixon_coles.form_momentum_weight,
+        superiority_calibration_scale=cfg.dixon_coles.superiority_calibration_scale,
+        base_draw_inflation=cfg.dixon_coles.base_draw_inflation,
+        closeness_draw_threshold=cfg.dixon_coles.closeness_draw_threshold,
+        closeness_draw_boost=cfg.dixon_coles.closeness_draw_boost,
+        fixed_rho=cfg.dixon_coles.fixed_rho,
+    )
     base_model.fit(valid, as_of=as_of)
     _, _, draw_inf = base_model.compute_context_adjustments(context_features)
 

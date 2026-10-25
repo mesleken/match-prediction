@@ -9,8 +9,19 @@ import yaml
 @dataclass
 class DixonColesConfig:
     half_life_years: float = 1.25
-    in_season_boost: float = 3.5
+    season_carryover: float = 0.85
+    in_season_boost: float = 1.50
+    shot_alpha: float = 0.40
+    ridge_att: float = 1.50
+    ridge_def: float = 1.50
     squad_prior_weight: float = 0.18
+    early_season_prior_weight: float = 0.15
+    form_momentum_weight: float = 0.08
+    superiority_calibration_scale: float = 1.11
+    fixed_rho: Optional[float] = None
+    base_draw_inflation: float = 0.0
+    closeness_draw_threshold: float = 0.0
+    closeness_draw_boost: float = 0.0
     refit_interval: int = 1
     integrate_uncertainty: bool = True
     grid_size: int = 10

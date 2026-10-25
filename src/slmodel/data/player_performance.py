@@ -398,13 +398,15 @@ def _simulate_team_match_events(
 def compute_player_season_stats_and_ratings(
     db_path: str = "data/warehouse.duckdb",
     season: str = "2627",
-    update_players_table: bool = True,
-    json_out: str = "config/squads_2627.json",
+    update_players_table: bool = False,
 ) -> pd.DataFrame:
     """
     Aggregate all match statistics for the season and compute empirical data-driven ratings
-    with Bayesian shrinkage towards position baselines. Updates 'player_season_stats'
-    and optionally 'players' table and JSON configuration.
+    with Bayesian shrinkage towards position baselines. Updates strictly 'player_season_stats' table.
+    
+    ARCHITECTURAL GUARANTEE: Never writes to 'players' table or squads JSON to strictly prevent
+    circular future data leakage into pre-season squad priors and match predictions.
+    `update_players_table` is deprecated and ignored for backwards compatibility.
     """
     con = duckdb.connect(db_path)
     try:
@@ -597,43 +599,9 @@ def compute_player_season_stats_and_ratings(
         """)
         con.unregister("tmp_season_stats")
 
-        # Update players table if requested
-        if update_players_table:
-            con.execute("""
-                UPDATE players
-                SET att_rating = s.computed_att_rating,
-                    def_rating = s.computed_def_rating,
-                    overall_rating = s.computed_overall_rating
-                FROM player_season_stats s
-                WHERE players.player_id = s.player_id AND s.season = ?
-            """, [str(season)])
-
         con.commit()
     finally:
         con.close()
-
-    # Sync back to squads JSON config
-    if update_players_table and Path(json_out).exists():
-        try:
-            squads_cfg = json.loads(Path(json_out).read_text(encoding="utf-8"))
-            player_dict = {
-                r["player_id"]: (r["computed_att_rating"], r["computed_def_rating"], r["computed_overall_rating"])
-                for _, r in df.iterrows()
-            }
-            # Update players in JSON
-            for tid_str, tdata in squads_cfg.items():
-                for p in tdata.get("players", []):
-                    # Match by name and team
-                    p_name = p.get("name")
-                    match_row = df[(df["team_id"] == int(tid_str)) & (df["name"] == p_name)]
-                    if not match_row.empty:
-                        r = match_row.iloc[0]
-                        p["att"] = float(r["computed_att_rating"])
-                        p["def"] = float(r["computed_def_rating"])
-                        p["ovr"] = float(r["computed_overall_rating"])
-            Path(json_out).write_text(json.dumps(squads_cfg, indent=2, ensure_ascii=False), encoding="utf-8")
-        except Exception:
-            pass
 
     return df
 

@@ -531,14 +531,13 @@ def seed_players_database(db_path: str = "data/warehouse.duckdb", json_out: str 
     players_rows = []
     name_to_id: dict[tuple[int, str], int] = {}
 
-    # Load authentic squads from JSON configuration if available, otherwise fallback to embedded SQUADS_DATA
+    # Canonical pre-season baseline is SQUADS_DATA (frozen, no in-season circular leakage)
     squads_source = SQUADS_DATA
-    if Path(json_out).exists():
-        try:
-            loaded_json = json.loads(Path(json_out).read_text(encoding="utf-8"))
-            squads_source = {int(k): v for k, v in loaded_json.items()}
-        except Exception:
-            squads_source = SQUADS_DATA
+    # Always persist frozen baseline to squads_2627.json
+    try:
+        Path(json_out).write_text(json.dumps({str(k): v for k, v in SQUADS_DATA.items()}, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
 
     for tid, sdata in squads_source.items():
         for p in sdata["players"]:

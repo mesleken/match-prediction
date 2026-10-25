@@ -1,0 +1,147 @@
+{
+  "total_evaluated_matches": 1793,
+  "from_season": "2122",
+  "to_season": "2627",
+  "overall_hit_rates": {
+    "hit_1x2_pct": 53.32,
+    "hit_double_chance_pct": 80.2,
+    "hit_over_under_25_pct": 53.32,
+    "hit_btts_pct": 51.92,
+    "hit_top1_exact_score_pct": 12.66,
+    "hit_top3_score_pct": 30.34,
+    "hit_top5_score_pct": 48.24
+  },
+  "overall_loss_metrics": {
+    "mean_rps": 0.2014,
+    "mean_logloss_nll": 2.9649,
+    "mean_brier_score": 0.5894,
+    "ece_home_win": 0.0391,
+    "ece_draw": 0.0202,
+    "ece_away_win": 0.0339,
+    "corners_mae": 2.63,
+    "cards_mae": 2.04
+  },
+  "confidence_breakdown": [
+    {
+      "tier": "Düşük Güven (< %45)",
+      "matches": 804,
+      "pct_of_all": 44.8,
+      "hit_1x2_pct": 44.0,
+      "hit_dc_pct": 77.2,
+      "hit_ou25_pct": 48.9,
+      "hit_top3_score_pct": 30.2,
+      "mean_rps": 0.2275
+    },
+    {
+      "tier": "Orta Güven (%45 - %55)",
+      "matches": 547,
+      "pct_of_all": 30.5,
+      "hit_1x2_pct": 52.7,
+      "hit_dc_pct": 77.3,
+      "hit_ou25_pct": 51.4,
+      "hit_top3_score_pct": 31.3,
+      "mean_rps": 0.2016
+    },
+    {
+      "tier": "Yüksek Güven (%55 - %65)",
+      "matches": 295,
+      "pct_of_all": 16.5,
+      "hit_1x2_pct": 67.5,
+      "hit_dc_pct": 86.4,
+      "hit_ou25_pct": 58.0,
+      "hit_top3_score_pct": 29.8,
+      "mean_rps": 0.1723
+    },
+    {
+      "tier": "Çok Yüksek Güven (≥ %65)",
+      "matches": 147,
+      "pct_of_all": 8.2,
+      "hit_1x2_pct": 78.2,
+      "hit_dc_pct": 94.6,
+      "hit_ou25_pct": 75.5,
+      "hit_top3_score_pct": 28.6,
+      "mean_rps": 0.1167
+    }
+  ],
+  "season_breakdown": [
+    {
+      "season": "2122",
+      "matches": 380,
+      "hit_1x2_pct": 53.2,
+      "hit_dc_pct": 80.0,
+      "hit_ou25_pct": 50.0,
+      "hit_btts_pct": 53.2,
+      "hit_top1_score_pct": 13.2,
+      "hit_top3_score_pct": 31.6,
+      "hit_top5_score_pct": 49.2,
+      "mean_rps": 0.2102,
+      "mean_nll": 2.9554
+    },
+    {
+      "season": "2223",
+      "matches": 313,
+      "hit_1x2_pct": 51.8,
+      "hit_dc_pct": 79.9,
+      "hit_ou25_pct": 51.1,
+      "hit_btts_pct": 53.0,
+      "hit_top1_score_pct": 11.2,
+      "hit_top3_score_pct": 26.5,
+      "hit_top5_score_pct": 41.9,
+      "mean_rps": 0.2066,
+      "mean_nll": 3.0867
+    },
+    {
+      "season": "2324",
+      "matches": 380,
+      "hit_1x2_pct": 54.5,
+      "hit_dc_pct": 80.3,
+      "hit_ou25_pct": 52.9,
+      "hit_btts_pct": 46.8,
+      "hit_top1_score_pct": 14.2,
+      "hit_top3_score_pct": 31.1,
+      "hit_top5_score_pct": 50.3,
+      "mean_rps": 0.1959,
+      "mean_nll": 2.9395
+    },
+    {
+      "season": "2425",
+      "matches": 342,
+      "hit_1x2_pct": 57.0,
+      "hit_dc_pct": 80.4,
+      "hit_ou25_pct": 55.6,
+      "hit_btts_pct": 55.6,
+      "hit_top1_score_pct": 12.3,
+      "hit_top3_score_pct": 33.6,
+      "hit_top5_score_pct": 49.7,
+      "mean_rps": 0.1947,
+      "mean_nll": 2.9898
+    },
+    {
+      "season": "2526",
+      "matches": 306,
+      "hit_1x2_pct": 51.0,
+      "hit_dc_pct": 81.7,
+      "hit_ou25_pct": 55.2,
+      "hit_btts_pct": 50.3,
+      "hit_top1_score_pct": 13.4,
+      "hit_top3_score_pct": 32.0,
+      "hit_top5_score_pct": 52.3,
+      "mean_rps": 0.1946,
+      "mean_nll": 2.8249
+    },
+    {
+      "season": "2627",
+      "matches": 72,
+      "hit_1x2_pct": 47.2,
+      "hit_dc_pct": 75.0,
+      "hit_ou25_pct": 63.9,
+      "hit_btts_pct": 56.9,
+      "hit_top1_score_pct": 6.9,
+      "hit_top3_score_pct": 13.9,
+      "hit_top5_score_pct": 36.1,
+      "mean_rps": 0.2229,
+      "mean_nll": 3.0962
+    }
+  ],
+  "raw_records_count": 1793
+}

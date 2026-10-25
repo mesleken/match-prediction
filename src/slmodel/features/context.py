@@ -51,9 +51,29 @@ class ContextFeatureExtractor:
         self.derbies_path = derbies_path
         self.cfg = get_model_config()
         self._referee_engine = None
+        self._weather_cache: dict[int, tuple[float, float, float]] = {}
         self._load_derbies()
         self._load_stadiums()
         self._load_external_fixtures()
+        self._load_weather()
+
+    def _load_weather(self) -> None:
+        """Cache match weather records in-memory to prevent repeated DuckDB connections."""
+        try:
+            con = duckdb.connect(self.db_path, read_only=True)
+            tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]
+            if "match_weather" in tables:
+                rows = con.execute("SELECT match_id, temp_c, precip_mm, wind_kmh FROM match_weather").fetchall()
+                for r in rows:
+                    if r[0] is not None:
+                        self._weather_cache[int(r[0])] = (
+                            float(r[1]) if r[1] is not None else 18.0,
+                            float(r[2]) if r[2] is not None else 0.0,
+                            float(r[3]) if r[3] is not None else 12.0,
+                        )
+            con.close()
+        except Exception:
+            self._weather_cache = {}
 
     def _load_derbies(self) -> None:
         p = Path(self.derbies_path)
@@ -326,30 +346,20 @@ class ContextFeatureExtractor:
             ref_whistle = flow["whistle_tempo_index"]
             ref_card_mult = float(prof.get("card_strictness_mult", 1.0))
 
-        # 7. Weather Conditions (from match_weather)
+        # 7. Weather Conditions (from cached match_weather)
         weather_delta_pace = 0.0
         weather_temp = 18.0
         weather_precip = 0.0
         weather_wind = 12.0
-        if match_id is not None:
-            try:
-                con = duckdb.connect(self.db_path, read_only=True)
-                w_row = con.execute("SELECT temp_c, precip_mm, wind_kmh FROM match_weather WHERE match_id = ?", [match_id]).fetchone()
-                con.close()
-                if w_row:
-                    weather_temp = float(w_row[0]) if w_row[0] is not None else 18.0
-                    weather_precip = float(w_row[1]) if w_row[1] is not None else 0.0
-                    weather_wind = float(w_row[2]) if w_row[2] is not None else 12.0
-
-                    if self.cfg.external_factors.weather_enabled:
-                        if weather_precip > 2.0:
-                            weather_delta_pace -= 0.025
-                        if weather_wind > 35.0:
-                            weather_delta_pace -= 0.020
-                        if weather_temp < 2.0 or weather_temp > 32.0:
-                            weather_delta_pace -= 0.015
-            except Exception:
-                pass
+        if match_id is not None and match_id in self._weather_cache:
+            weather_temp, weather_precip, weather_wind = self._weather_cache[match_id]
+            if self.cfg.external_factors.weather_enabled:
+                if weather_precip > 2.0:
+                    weather_delta_pace -= 0.025
+                if weather_wind > 35.0:
+                    weather_delta_pace -= 0.020
+                if weather_temp < 2.0 or weather_temp > 32.0:
+                    weather_delta_pace -= 0.015
 
         return {
             "home_rest_days": h_rest,

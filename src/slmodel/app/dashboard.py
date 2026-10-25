@@ -846,7 +846,7 @@ with tabs[1]:
         if st.button("🔄 Tüm Maç İstatistiklerini Yeniden Çek & Reytingleri Güncelle", use_container_width=True):
             with st.spinner("Oyuncu maç istatistikleri toplanıyor ve reytingler güncelleniyor..."):
                 generate_and_sync_player_match_stats(db_path=DB_PATH, season="2627")
-                compute_player_season_stats_and_ratings(db_path=DB_PATH, season="2627", update_players_table=True)
+                compute_player_season_stats_and_ratings(db_path=DB_PATH, season="2627")
                 st.success("Tüm oyuncu istatistikleri ve reytingler başarıyla güncellendi!")
                 st.rerun()
 

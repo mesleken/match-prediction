@@ -536,8 +536,6 @@ def fetch_and_sync_all_mackolik_squads(
     season_df = compute_player_season_stats_and_ratings(
         db_path=db_path,
         season="2627",
-        update_players_table=True,
-        json_out=json_out,
     )
 
     return {

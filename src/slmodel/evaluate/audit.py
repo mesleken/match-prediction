@@ -48,6 +48,7 @@ class SeasonSimulationAuditor:
         load_priors: bool = True,
     ) -> None:
         cfg = get_model_config()
+        self.cfg = cfg
         self.db_path = db_path
         self.season = season
         self.model_kwargs = model_kwargs or {
@@ -152,21 +153,24 @@ class SeasonSimulationAuditor:
                     p_ou = devig_shin([float(r_o.o_over), float(r_o.o_under)])
                     closing_ou25[m_id] = float(p_ou[0])
 
-        # Initialize model with V2.2 parameters and squad priors if enabled
+        # Initialize model with unified configuration parameters and squad priors if enabled
         kwargs = dict(self.model_kwargs)
         if self.load_priors:
             v22_defaults = {
-                "half_life_years": 0.75,
-                "season_carryover": 0.40,
-                "in_season_boost": 3.2,
-                "shot_alpha": 0.45,
-                "squad_prior_weight": 0.32,
-                "early_season_prior_weight": 0.18,
-                "form_momentum_weight": 0.08,
-                "base_draw_inflation": -0.02,
-                "closeness_draw_threshold": 0.14,
-                "closeness_draw_boost": 0.42,
-                "fixed_rho": 0.03,
+                "half_life_years": self.cfg.dixon_coles.half_life_years,
+                "season_carryover": self.cfg.dixon_coles.season_carryover,
+                "in_season_boost": self.cfg.dixon_coles.in_season_boost,
+                "shot_alpha": self.cfg.dixon_coles.shot_alpha,
+                "ridge_att": self.cfg.dixon_coles.ridge_att,
+                "ridge_def": self.cfg.dixon_coles.ridge_def,
+                "squad_prior_weight": self.cfg.dixon_coles.squad_prior_weight,
+                "early_season_prior_weight": self.cfg.dixon_coles.early_season_prior_weight,
+                "form_momentum_weight": self.cfg.dixon_coles.form_momentum_weight,
+                "superiority_calibration_scale": self.cfg.dixon_coles.superiority_calibration_scale,
+                "base_draw_inflation": self.cfg.dixon_coles.base_draw_inflation,
+                "closeness_draw_threshold": self.cfg.dixon_coles.closeness_draw_threshold,
+                "closeness_draw_boost": self.cfg.dixon_coles.closeness_draw_boost,
+                "fixed_rho": self.cfg.dixon_coles.fixed_rho,
             }
             for k, v in v22_defaults.items():
                 kwargs.setdefault(k, v)
@@ -213,12 +217,17 @@ class SeasonSimulationAuditor:
                 referee_name=ref_name,
             )
 
-            # 2. Dixon-Coles goal intensity & joint score matrix prediction
-            lam_h, mu_a, rho = model.predict_lambdas(hid, aid, crowd=crowd_val, context_features=ctx)
+            # 2. Dixon-Coles goal intensity & joint score matrix prediction (Pure Model)
+            lam_pure_h, mu_pure_a, rho_pure = model.predict_lambdas(hid, aid, crowd=crowd_val, context_features=ctx)
+            M_pure = score_matrix(lam_pure_h, mu_pure_a, rho=rho_pure)
+            p_pure = one_x_two(M_pure)
 
-            # Blend with pre-match market lambdas when upgraded V2.2 mode is enabled
+            # Pre-match market inversion and separate blended predictions
+            lam_h, mu_a, rho = lam_pure_h, mu_pure_a, rho_pure
+            p_mkt = None
             if self.load_priors and mid in closing_1x2:
                 p_cl = devig_shin(closing_1x2[mid])
+                p_mkt = p_cl
                 p_ou_mkt = closing_ou25.get(mid, 0.54)
                 lm_cl, mm_cl = invert_lambdas(p_cl, p_over25_mkt=p_ou_mkt, rho=-0.03)
                 if mid in opening_1x2:
@@ -228,21 +237,13 @@ class SeasonSimulationAuditor:
                     mm = mm_cl * ((mm_cl / max(mm_op, 0.2)) ** 0.20)
                 else:
                     lm, mm = lm_cl, mm_cl
-                lam_h, mu_a = blend_lambdas(lam_h, mu_a, lm, mm, w_total=0.55, w_superiority=0.52)
-
-            if self.load_priors and model.closeness_draw_threshold > 0.0:
-                diff = abs(lam_h - mu_a)
-                if diff < model.closeness_draw_threshold:
-                    d_inf = float(model.closeness_draw_boost * (1.0 - (diff / model.closeness_draw_threshold) ** 2))
-                else:
-                    d_inf = float(model.base_draw_inflation)
-                M_pred = score_matrix(lam_h, mu_a, rho=rho, draw_inflation=d_inf)
-            else:
-                M_pred = model.predict(
-                    hid, aid, crowd=crowd_val, context_features=ctx,
-                    integrate_uncertainty=self.integrate_uncertainty
+                lam_h, mu_a = blend_lambdas(
+                    lam_pure_h, mu_pure_a, lm, mm,
+                    w_total=self.cfg.market_blend.w_total,
+                    w_superiority=self.cfg.market_blend.w_superiority,
                 )
 
+            M_pred = score_matrix(lam_h, mu_a, rho=rho)
             p_1x2 = one_x_two(M_pred)
             p_home, p_draw, p_away = float(p_1x2[0]), float(p_1x2[1]), float(p_1x2[2])
             ou_25 = over_under(M_pred, line=2.5)
@@ -312,10 +313,17 @@ class SeasonSimulationAuditor:
             hit_top3_score = any(s[0] == hg and s[1] == ag for s in top_5_scores[:3])
             hit_top5_score = any(s[0] == hg and s[1] == ag for s in top_5_scores[:5])
 
-            # Metrics
+            # Metrics (Separating Pure Model, Market Closing, and Blended Predictions)
             rps_val = float(rps(p_1x2, outcome_idx))
             brier_val = float(brier_score(p_1x2, outcome_idx))
             ll_val = float(score_log_loss(M_pred, hg, ag))
+
+            rps_pure = float(rps(p_pure, outcome_idx))
+            ll_pure = float(score_log_loss(M_pure, hg, ag))
+            hit_pure = bool(np.argmax(p_pure) == outcome_idx)
+
+            rps_mkt = float(rps(p_mkt, outcome_idx)) if p_mkt is not None else None
+            hit_mkt = bool(np.argmax(p_mkt) == outcome_idx) if p_mkt is not None else None
 
             # Variance decomposition terms
             pred_xg_diff = float(lam_h - mu_a)
@@ -404,6 +412,11 @@ class SeasonSimulationAuditor:
                 "rps": rps_val,
                 "brier": brier_val,
                 "logloss": ll_val,
+                "rps_pure": rps_pure,
+                "logloss_pure": ll_pure,
+                "hit_pure_1x2": hit_pure,
+                "rps_mkt": rps_mkt,
+                "hit_mkt_1x2": hit_mkt,
                 "model_error": model_error,
                 "finishing_luck": finishing_luck,
                 "total_error": total_error,
@@ -429,10 +442,18 @@ class SeasonSimulationAuditor:
         if n == 0:
             return {}
 
+        mkt_rps_list = [r["rps_mkt"] for r in records if r.get("rps_mkt") is not None]
+        mkt_hit_list = [r["hit_mkt_1x2"] for r in records if r.get("hit_mkt_1x2") is not None]
+
         return {
             "mean_rps": float(np.mean([r["rps"] for r in records])),
             "mean_brier": float(np.mean([r["brier"] for r in records])),
             "mean_logloss": float(np.mean([r["logloss"] for r in records])),
+            "mean_rps_pure": float(np.mean([r["rps_pure"] for r in records])),
+            "mean_logloss_pure": float(np.mean([r["logloss_pure"] for r in records])),
+            "hit_rate_pure_1x2_pct": float(np.mean([r["hit_pure_1x2"] for r in records]) * 100.0),
+            "mean_rps_mkt": float(np.mean(mkt_rps_list)) if mkt_rps_list else None,
+            "hit_rate_mkt_1x2_pct": float(np.mean(mkt_hit_list) * 100.0) if mkt_hit_list else None,
             "hit_rate_1x2_pct": float(np.mean([r["hit_1x2"] for r in records]) * 100.0),
             "hit_rate_double_chance_pct": float(np.mean([r["hit_double_chance"] for r in records]) * 100.0),
             "hit_rate_over25_pct": float(np.mean([r["hit_over_25"] for r in records]) * 100.0),

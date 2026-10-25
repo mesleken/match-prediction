@@ -79,6 +79,7 @@ class DixonColesModel:
         squad_prior_weight: float = 0.0,
         early_season_prior_weight: float = 0.0,
         form_momentum_weight: float = 0.0,
+        superiority_calibration_scale: float = 1.0,
         base_draw_inflation: float = 0.0,
         closeness_draw_threshold: float = 0.0,
         closeness_draw_boost: float = 0.0,
@@ -98,6 +99,7 @@ class DixonColesModel:
         self.squad_prior_weight = squad_prior_weight
         self.early_season_prior_weight = early_season_prior_weight
         self.form_momentum_weight = form_momentum_weight
+        self.superiority_calibration_scale = superiority_calibration_scale
         self.base_draw_inflation = base_draw_inflation
         self.closeness_draw_threshold = closeness_draw_threshold
         self.closeness_draw_boost = closeness_draw_boost
@@ -612,6 +614,16 @@ class DixonColesModel:
 
         lam = float(np.exp(self.mu0 + self.home_adv + crowd_adj + att_h - def_a + delta_h))
         mu = float(np.exp(self.mu0 + att_a - def_h + delta_a))
+
+        # Proven walk-forward calibration: scale superiority v = log(lam/mu) while preserving total pace u = log(lam+mu)
+        if self.superiority_calibration_scale != 1.0 and self.superiority_calibration_scale > 0.0:
+            tot = max(lam + mu, 1e-6)
+            v = np.log(max(lam / max(mu, 1e-6), 1e-6))
+            v_scaled = float(self.superiority_calibration_scale * v)
+            exp_v = float(np.exp(np.clip(v_scaled, -10.0, 10.0)))
+            lam = float(tot * (exp_v / (1.0 + exp_v)))
+            mu = float(tot / (1.0 + exp_v))
+
         eff_rho = float(self.fixed_rho) if self.fixed_rho is not None else self.rho
 
         return lam, mu, eff_rho

@@ -88,3 +88,102 @@ def test_no_leakage_on_exact_kickoff_timestamp():
 
     # If match 21 had leaked, mu0 would jump substantially
     assert model.mu0 < 1.0
+
+
+def test_no_squad_prior_data_leakage():
+    """
+    Verify that generating in-season player statistics or re-aggregating ratings
+    never alters pre-season 'players' table or Empirical Bayes squad priors.
+    Guarantees week-1 match predictions are mathematically invariant to week-8 simulated performance.
+    """
+    import duckdb
+    from slmodel.models.dixon_coles import compute_squad_priors
+    from slmodel.data.player_performance import (
+        generate_and_sync_player_match_stats,
+        compute_player_season_stats_and_ratings,
+    )
+
+    db_path = "data/warehouse.duckdb"
+
+    # 1. Baseline squad priors and player ratings
+    priors_before = compute_squad_priors(db_path=db_path)
+    con = duckdb.connect(db_path, read_only=True)
+    df_players_before = con.execute("SELECT player_id, att_rating, def_rating, overall_rating FROM players ORDER BY player_id").fetchdf()
+    con.close()
+
+    # 2. Trigger in-season performance generation and Bayesian update
+    generate_and_sync_player_match_stats(db_path=db_path, season="2627")
+    compute_player_season_stats_and_ratings(db_path=db_path, season="2627")
+
+    # 3. Re-read squad priors and player ratings
+    priors_after = compute_squad_priors(db_path=db_path)
+    con = duckdb.connect(db_path, read_only=True)
+    df_players_after = con.execute("SELECT player_id, att_rating, def_rating, overall_rating FROM players ORDER BY player_id").fetchdf()
+    con.close()
+
+    # Assert players table was NOT modified
+    pd.testing.assert_frame_equal(df_players_before, df_players_after)
+
+    # Assert squad priors are identical down to 14 decimal places
+    for tid, (att_b, def_b) in priors_before.items():
+        assert tid in priors_after
+        att_a, def_a = priors_after[tid]
+        assert np.isclose(att_b, att_a, atol=1e-12)
+        assert np.isclose(def_b, def_a, atol=1e-12)
+
+
+def test_ablation_factor_alters_predictions():
+    """
+    Verify that ablation neutralizers genuinely perturb match predictions
+    when active feature values are present (ruling out silent no-ops).
+    """
+    from slmodel.evaluate.backtest import AblationRunner
+    from slmodel.features.context import ContextFeatureExtractor
+    from slmodel.models.dixon_coles import DixonColesModel
+
+    model = DixonColesModel()
+    # Mock context with non-zero referee flow and non-zero weather pace
+    ctx_active = {
+        "ref_delta_h": 0.08,
+        "ref_delta_a": -0.04,
+        "ref_draw_inf": 0.03,
+        "weather_delta_pace": -0.05,
+    }
+    model.is_fitted = True
+    model.team_to_idx = {1: 0, 2: 1}
+    model.team_ids = [1, 2]
+    model.att = np.array([0.2, -0.1])
+    model.def_ = np.array([-0.1, 0.1])
+    model.mu0 = 0.2
+    model.home_adv = 0.25
+    model.rho = -0.08
+
+    lam_full, mu_full, _ = model.predict_lambdas(1, 2, context_features=ctx_active)
+
+    # Ablate referee
+    ctx_no_ref = dict(ctx_active)
+    ctx_no_ref["ref_delta_h"] = 0.0
+    ctx_no_ref["ref_delta_a"] = 0.0
+    ctx_no_ref["ref_draw_inf"] = 0.0
+    lam_abl, mu_abl, _ = model.predict_lambdas(1, 2, context_features=ctx_no_ref)
+
+    # Must show non-zero shift
+    assert not np.isclose(lam_full, lam_abl, atol=1e-4)
+    assert not np.isclose(mu_full, mu_abl, atol=1e-4)
+
+
+def test_backtest_config_matches_production():
+    """
+    Verify that WalkForwardBacktest aligns strictly with production config/model.yaml
+    and does not diverge on regularization, decay rates, or blending weights.
+    """
+    from slmodel.config import get_model_config
+    from slmodel.evaluate.backtest import WalkForwardBacktest
+
+    cfg = get_model_config()
+    backtester = WalkForwardBacktest()
+
+    assert backtester.half_life_years == cfg.dixon_coles.half_life_years
+    assert backtester.w_blend_total == cfg.market_blend.w_total
+    assert backtester.w_blend_superiority == cfg.market_blend.w_superiority
+

@@ -545,26 +545,34 @@ def predict(
     is_derby = ctx_extractor.is_derby(h_id, a_id)
     ctx_feats = ctx_extractor.extract_features_for_match(h_id, a_id, now_utc, matches_df, referee_name=referee)
 
-    # 2. Fit Upgraded V2.2 Dixon-Coles Hybrid Model (Katman A + E + G) & Empirical Bayes Side Model
+    # 2. Fit Production Dixon-Coles Hybrid Model & Side Markets from unified config
+    cfg = get_model_config()
     from slmodel.models.dixon_coles import compute_squad_priors
-    sq_priors = compute_squad_priors(db_path=db_path)
+    sq_priors = compute_squad_priors(db_path=db_path) if cfg.dixon_coles.squad_prior_weight > 0 else {}
     model = DixonColesModel(
-        half_life_years=0.75,
-        season_carryover=0.40,
-        in_season_boost=3.2,
-        shot_alpha=0.45,
-        squad_prior_weight=0.32,
-        early_season_prior_weight=0.22,
-        form_momentum_weight=0.08,
-        base_draw_inflation=-0.02,
-        closeness_draw_threshold=0.14,
-        closeness_draw_boost=0.42,
-        fixed_rho=0.03,
+        half_life_years=cfg.dixon_coles.half_life_years,
+        season_carryover=cfg.dixon_coles.season_carryover,
+        in_season_boost=cfg.dixon_coles.in_season_boost,
+        shot_alpha=cfg.dixon_coles.shot_alpha,
+        ridge_att=cfg.dixon_coles.ridge_att,
+        ridge_def=cfg.dixon_coles.ridge_def,
+        squad_prior_weight=cfg.dixon_coles.squad_prior_weight,
+        early_season_prior_weight=cfg.dixon_coles.early_season_prior_weight,
+        form_momentum_weight=cfg.dixon_coles.form_momentum_weight,
+        superiority_calibration_scale=cfg.dixon_coles.superiority_calibration_scale,
+        base_draw_inflation=cfg.dixon_coles.base_draw_inflation,
+        closeness_draw_threshold=cfg.dixon_coles.closeness_draw_threshold,
+        closeness_draw_boost=cfg.dixon_coles.closeness_draw_boost,
+        fixed_rho=cfg.dixon_coles.fixed_rho,
         team_squad_priors=sq_priors,
     )
     model.fit(matches_df, as_of=now_utc)
 
-    side_model = SideMarketsModel(half_life_years=0.75, shrinkage_k=6.0, in_season_boost=3.0)
+    side_model = SideMarketsModel(
+        half_life_years=cfg.side_markets.corners_half_life,
+        shrinkage_k=cfg.side_markets.corners_shrinkage_k,
+        in_season_boost=cfg.side_markets.in_season_boost,
+    )
     side_model.fit(matches_df, as_of=now_utc)
 
     unc = model.predict_with_uncertainty(h_id, a_id, crowd="full", context_features=ctx_feats)
@@ -715,7 +723,11 @@ def predict(
             if len(raw_odds) == 3:
                 p_mkt = devig_shin(raw_odds)
                 lam_mkt, mu_mkt = invert_lambdas(p_mkt, p_over25_mkt=p_ou25_mkt, rho=rho)
-                lam_b, mu_b = blend_lambdas(lam_h, lam_a, lam_mkt, mu_mkt, w_total=0.25, w_superiority=0.12)
+                lam_b, mu_b = blend_lambdas(
+                    lam_h, lam_a, lam_mkt, mu_mkt,
+                    w_total=cfg.market_blend.w_total,
+                    w_superiority=cfg.market_blend.w_superiority,
+                )
                 M_blend = score_matrix(lam_b, mu_b, rho, draw_inflation=unc["draw_inflation"])
                 p_blend = one_x_two(M_blend)
 
@@ -880,9 +892,9 @@ def player_stats_command(
         res_sync = generate_and_sync_player_match_stats(db_path=db_path, season=season)
         typer.secho(f"  [OK] {res_sync['matches_processed']} maçtan {res_sync['records_generated']} oyuncu maç kaydı oluşturuldu.", fg=typer.colors.GREEN)
 
-        typer.secho(f"\n[2/2] Bayesyen büzülmeli reytingler hesaplanıyor ve veritabanı güncelleniyor...", fg=typer.colors.CYAN)
-        df_updated = compute_player_season_stats_and_ratings(db_path=db_path, season=season, update_players_table=True)
-        typer.secho(f"  [OK] {len(df_updated)} oyuncunun veriye dayalı reytingleri ve squads_2627.json güncellendi!", fg=typer.colors.BRIGHT_GREEN, bold=True)
+        typer.secho(f"\n[2/2] Bayesyen büzülmeli reytingler hesaplanıyor (yalnızca player_season_stats güncellenir)...", fg=typer.colors.CYAN)
+        df_updated = compute_player_season_stats_and_ratings(db_path=db_path, season=season)
+        typer.secho(f"  [OK] {len(df_updated)} oyuncunun sezon içi istatistikleri güncellendi (pre-season referanslar donduruldu).", fg=typer.colors.BRIGHT_GREEN, bold=True)
 
     con = duckdb.connect(db_path)
     try:
@@ -890,7 +902,7 @@ def player_stats_command(
         if "player_season_stats" not in tables or con.execute("SELECT COUNT(*) FROM player_season_stats").fetchone()[0] == 0:
             typer.secho("Oyuncu istatistikleri henüz hesaplanmamış, otomatik hesaplanıyor...", fg=typer.colors.YELLOW)
             generate_and_sync_player_match_stats(db_path=db_path, season=season)
-            compute_player_season_stats_and_ratings(db_path=db_path, season=season, update_players_table=True)
+            compute_player_season_stats_and_ratings(db_path=db_path, season=season)
     finally:
         con.close()
 
