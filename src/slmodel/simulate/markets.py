@@ -264,3 +264,47 @@ def kelly_stake(
         "robust_kelly": float(robust_k),
         "uncertainty_shrinkage": float(shrinkage),
     }
+
+
+def calibrate_binary_probability(
+    p: float,
+    a: float = 1.0,
+    b: float = 0.0,
+) -> float:
+    """
+    Apply Platt/logistic calibration to a raw binary market probability:
+    logit(p_cal) = a * logit(p_raw) + b
+    p_cal = sigmoid(logit(p_cal))
+    """
+    p_safe = float(np.clip(p, 1e-6, 1.0 - 1e-6))
+    logit_raw = np.log(p_safe / (1.0 - p_safe))
+    logit_cal = a * logit_raw + b
+    p_cal = 1.0 / (1.0 + np.exp(-np.clip(logit_cal, -15.0, 15.0)))
+    return float(p_cal)
+
+
+def fit_binary_calibration(
+    probs: np.ndarray,
+    actuals: np.ndarray,
+    regularization: float = 1.0,
+) -> tuple[float, float]:
+    """
+    Fit Platt calibration parameters (a, b) minimizing penalized binary cross-entropy.
+    Regularization penalizes deviation from neutral identity mapping (a=1.0, b=0.0).
+    """
+    from scipy.optimize import minimize
+
+    p_safe = np.clip(probs, 1e-6, 1.0 - 1e-6)
+    logits = np.log(p_safe / (1.0 - p_safe))
+    y = np.asarray(actuals, dtype=np.float64)
+
+    def loss(params: np.ndarray) -> float:
+        a, b = params
+        cal_logits = np.clip(a * logits + b, -15.0, 15.0)
+        p_cal = 1.0 / (1.0 + np.exp(-cal_logits))
+        bce = -np.mean(y * np.log(np.clip(p_cal, 1e-12, 1.0)) + (1.0 - y) * np.log(np.clip(1.0 - p_cal, 1e-12, 1.0)))
+        reg = regularization * ((a - 1.0) ** 2 + b ** 2) / (len(y) + 1e-6)
+        return float(bce + reg)
+
+    res = minimize(loss, x0=np.array([1.0, 0.0]), bounds=[(0.1, 3.0), (-2.0, 2.0)], method="L-BFGS-B")
+    return float(res.x[0]), float(res.x[1])

@@ -1,0 +1,77 @@
+{
+  "n_evaluated_matches": 1793,
+  "n_clusters": 194,
+  "temperature": 0.75,
+  "lambda_0": 0.1,
+  "naive_baseline": {
+    "btts_rate": 0.5583,
+    "btts_brier": 0.246603,
+    "ou25_rate": 0.5443,
+    "ou25_brier": 0.248034
+  },
+  "models": {
+    "model_b0_baseline": {
+      "rps": 0.199752,
+      "brier_ou25": 0.245542,
+      "bss_ou25": 1.0,
+      "brier_btts": 0.248893,
+      "bss_btts": -0.93,
+      "accuracy_1x2": 0.536
+    },
+    "candidate_i1_bivariate_poisson": {
+      "rps": 0.199758,
+      "delta_rps": 5e-06,
+      "ci_95_delta_rps": [
+        -0.000154,
+        0.000183
+      ],
+      "brier_ou25": 0.245708,
+      "bss_ou25": 0.94,
+      "brier_btts": 0.248615,
+      "bss_btts": -0.82,
+      "delta_brier_btts": -0.000278,
+      "ci_95_delta_brier_btts": [
+        -0.000598,
+        2.8e-05
+      ],
+      "p_raw_btts": 0.0857,
+      "p_holm_btts": 0.257,
+      "superior": false
+    },
+    "candidate_i2_platt_calibration": {
+      "rps": 0.199752,
+      "brier_ou25": 0.245708,
+      "bss_ou25": 0.94,
+      "brier_btts": 0.247172,
+      "bss_btts": -0.23,
+      "delta_brier_btts": -0.001721,
+      "ci_95_delta_brier_btts": [
+        -0.003971,
+        0.000858
+      ],
+      "p_raw_btts": 0.1198,
+      "p_holm_btts": 0.257,
+      "superior": false
+    },
+    "candidate_i1_plus_i2_combined": {
+      "rps": 0.199758,
+      "brier_ou25": 0.24571,
+      "bss_ou25": 0.94,
+      "brier_btts": 0.247165,
+      "bss_btts": -0.23,
+      "delta_brier_btts": -0.001728,
+      "ci_95_delta_brier_btts": [
+        -0.004201,
+        0.000723
+      ],
+      "p_raw_btts": 0.1174,
+      "p_holm_btts": 0.257,
+      "superior": false
+    },
+    "model_a_closing_market": {
+      "rps": 0.190786,
+      "accuracy_1x2": 0.5583
+    }
+  },
+  "decision": "I-KAPISI GEÇİLMEDİ (Yan Pazarlarda Tam Pozitif BSS Sağlanamadı - Dixon-Coles Bağımsız Yapısı Korunmalı)"
+}

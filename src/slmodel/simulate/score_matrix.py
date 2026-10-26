@@ -136,3 +136,55 @@ def posterior_predictive_score_matrix(
     if s_tot > 0:
         M_acc /= s_tot
     return M_acc
+
+
+def bivariate_poisson_score_matrix(
+    lam: float,
+    mu: float,
+    rho: float = 0.0,
+    lambda_0: float = 0.0,
+    draw_inflation: float = 0.0,
+    max_goals: int = DEFAULT_MAX_GOALS,
+) -> np.ndarray:
+    """
+    Generate bivariate Poisson score matrix with shared covariance parameter lambda_0
+    and Dixon-Coles tau adjustment (Karlis & Ntzoufras 2003).
+
+    P(X=x, Y=y) = exp(-(lam1 + lam2 + lam0)) * sum_{k=0}^{min(x,y)} [ lam1^(x-k)/(x-k)! * lam2^(y-k)/(y-k)! * lam0^k / k! ]
+    where lam1 = max(lam - lam0, 1e-6), lam2 = max(mu - lam0, 1e-6), and Cov(X, Y) = lam0.
+    """
+    if lambda_0 <= 1e-8:
+        return score_matrix(lam, mu, rho, draw_inflation=draw_inflation, max_goals=max_goals)
+
+    lam0 = float(min(lambda_0, max(float(lam), float(mu)) * 0.45, 0.50))
+    lam1 = max(float(lam) - lam0, 1e-6)
+    lam2 = max(float(mu) - lam0, 1e-6)
+
+    g = np.arange(max_goals + 1, dtype=np.float64)
+    log_fact = gammaln(g + 1.0)
+
+    M = np.zeros((max_goals + 1, max_goals + 1), dtype=np.float64)
+    base_const = np.exp(-(lam1 + lam2 + lam0))
+
+    for x in range(max_goals + 1):
+        for y in range(max_goals + 1):
+            k_max = min(x, y)
+            k_arr = np.arange(k_max + 1, dtype=np.float64)
+            log_terms = (
+                (x - k_arr) * np.log(lam1)
+                - log_fact[x - k_arr.astype(int)]
+                + (y - k_arr) * np.log(lam2)
+                - log_fact[y - k_arr.astype(int)]
+                + k_arr * np.log(max(lam0, 1e-12))
+                - log_fact[k_arr.astype(int)]
+            )
+            max_lt = np.max(log_terms)
+            sum_val = np.sum(np.exp(log_terms - max_lt)) * np.exp(max_lt)
+            M[x, y] = base_const * sum_val
+
+    t_mat = tau_matrix(lam, mu, rho, draw_inflation=draw_inflation, max_goals=max_goals)
+    mat = M * t_mat
+    s = mat.sum()
+    if s > 0:
+        mat /= s
+    return mat

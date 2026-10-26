@@ -109,6 +109,25 @@
       "p_raw_t_g1": 0.1576,
       "p_holm_g1": 0.3152,
       "decision": "G-KAPISI GEÇİLMEDİ (Vekil xG Formu Anlamlı Kazanç Sağlamadı - Katsayı Kapalı Tutulmalı)"
+    },
+    "side_markets_experiment_i": {
+      "n_evaluated_matches": 1793,
+      "n_clusters": 194,
+      "temperature": 0.75,
+      "lambda_0": 0.1,
+      "naive_baseline_brier_ou25": 0.248034,
+      "naive_baseline_brier_btts": 0.246603,
+      "model_b0_brier_ou25": 0.245542,
+      "model_b0_bss_ou25": 1.0,
+      "model_b0_brier_btts": 0.248893,
+      "model_b0_bss_btts": -0.93,
+      "candidate_i1_brier_btts": 0.248615,
+      "candidate_i1_bss_btts": -0.82,
+      "candidate_i2_brier_btts": 0.247172,
+      "candidate_i2_bss_btts": -0.23,
+      "candidate_i2_brier_ou25": 0.245708,
+      "candidate_i2_bss_ou25": 0.94,
+      "decision": "I-KAPISI GEÇİLMEDİ (Yan Pazarlarda Tam Pozitif BSS Sağlanamadı - Dixon-Coles Bağımsız Yapısı Korunmalı)"
     }
   },
   "verified_report_files": [
@@ -120,6 +139,7 @@
     "reports/deney_e_matchengine_kanit_kapisi.md",
     "reports/deney_f_favori_kalibrasyon_ve_sicaklik.md",
     "reports/deney_g_xg_ozellikleri.md",
+    "reports/deney_i_ortak_tempo_ve_yan_pazarlar.md",
     "reports/matchengine_simulasyon_raporu.md",
     "reports/skor_modeli_derin_analiz.md",
     "reports/gecmis_gercek_veri_test_raporu.md"
