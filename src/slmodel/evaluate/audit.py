@@ -166,6 +166,7 @@ class SeasonSimulationAuditor:
                 "squad_prior_weight": self.cfg.dixon_coles.squad_prior_weight,
                 "early_season_prior_weight": self.cfg.dixon_coles.early_season_prior_weight,
                 "form_momentum_weight": self.cfg.dixon_coles.form_momentum_weight,
+                "low_tempo_damping_weight": getattr(self.cfg.dixon_coles, "low_tempo_damping_weight", 0.0),
                 "superiority_calibration_scale": self.cfg.dixon_coles.superiority_calibration_scale,
                 "base_draw_inflation": self.cfg.dixon_coles.base_draw_inflation,
                 "closeness_draw_threshold": self.cfg.dixon_coles.closeness_draw_threshold,
@@ -243,8 +244,10 @@ class SeasonSimulationAuditor:
                     w_total=self.cfg.market_blend.w_total,
                     w_superiority=self.cfg.market_blend.w_superiority,
                 )
+                rho = float((1.0 - self.cfg.market_blend.w_total) * rho_pure + self.cfg.market_blend.w_total * (-0.03))
 
-            M_pred = score_matrix(lam_h, mu_a, rho=rho)
+            _, _, draw_inf = model.compute_context_adjustments(ctx)
+            M_pred = score_matrix(lam_h, mu_a, rho=rho, draw_inflation=draw_inf)
             p_1x2 = one_x_two(M_pred)
             p_home, p_draw, p_away = float(p_1x2[0]), float(p_1x2[1]), float(p_1x2[2])
             ou_25 = over_under(M_pred, line=2.5)

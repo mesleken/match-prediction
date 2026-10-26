@@ -254,7 +254,7 @@ class ContextFeatureExtractor:
         def _compute_team_form_profile(team_id: int, is_home_target: bool) -> dict[str, float]:
             tm = prior[(prior["home_team_id"] == team_id) | (prior["away_team_id"] == team_id)]
             if len(tm) == 0 or "home_goals" not in tm.columns or "away_goals" not in tm.columns:
-                return {"att_form": 0.0, "def_vuln": 0.0, "venue_edge": 0.0, "in_season_matches": 0.0}
+                return {"att_form": 0.0, "def_vuln": 0.0, "pace_dev": 0.0, "venue_edge": 0.0, "in_season_matches": 0.0}
 
             rec = tm.tail(6)
             long_tm = tm.tail(30)
@@ -290,6 +290,7 @@ class ContextFeatureExtractor:
 
             att_form = float(rec_att_mean - base_att)
             def_vuln = float(rec_def_mean - base_def)
+            pace_dev = float((rec_att_mean + rec_def_mean) - 2.60) if len(r_att) >= 2 else 0.0
 
             v_tm = tm[tm["home_team_id"] == team_id].tail(6) if is_home_target else tm[tm["away_team_id"] == team_id].tail(6)
             if len(v_tm) >= 2:
@@ -316,6 +317,7 @@ class ContextFeatureExtractor:
             return {
                 "att_form": att_form,
                 "def_vuln": def_vuln,
+                "pace_dev": pace_dev,
                 "venue_edge": venue_edge,
                 "in_season_matches": n_in_season,
             }
@@ -404,10 +406,12 @@ class ContextFeatureExtractor:
             "form_momentum_a": form_a,
             "form_att_h": prof_h["att_form"],
             "form_def_vuln_h": prof_h["def_vuln"],
+            "pace_dev_h": prof_h["pace_dev"],
             "venue_edge_h": prof_h["venue_edge"],
             "in_season_matches_h": prof_h["in_season_matches"],
             "form_att_a": prof_a["att_form"],
             "form_def_vuln_a": prof_a["def_vuln"],
+            "pace_dev_a": prof_a["pace_dev"],
             "venue_edge_a": prof_a["venue_edge"],
             "in_season_matches_a": prof_a["in_season_matches"],
             "ref_delta_h": ref_delta_h,

@@ -79,6 +79,7 @@ class DixonColesModel:
         squad_prior_weight: float = 0.0,
         early_season_prior_weight: float = 0.0,
         form_momentum_weight: float = 0.0,
+        low_tempo_damping_weight: float = 0.0,
         xg_form_weight: float = 0.0,
         superiority_calibration_scale: float = 1.0,
         base_draw_inflation: float = 0.0,
@@ -105,6 +106,7 @@ class DixonColesModel:
         self.squad_prior_weight = squad_prior_weight
         self.early_season_prior_weight = early_season_prior_weight
         self.form_momentum_weight = form_momentum_weight
+        self.low_tempo_damping_weight = low_tempo_damping_weight
         self.xg_form_weight = xg_form_weight
         self.superiority_calibration_scale = superiority_calibration_scale
         self.base_draw_inflation = base_draw_inflation
@@ -576,6 +578,19 @@ class DixonColesModel:
                 + w_xg * float(np.tanh(xg_f_def_h / 0.8))
             )
 
+        # 6c. Low-Tempo / Sterility Pace Damping (symmetric log-intensity compression for sterile matchups)
+        # Preserves exact superiority ratio (lam_H / mu_A) while organically increasing 0-0 / 1-1 draw mass
+        if getattr(self, "low_tempo_damping_weight", 0.0) > 0.0 and (
+            "pace_dev_h" in context_features or "pace_dev_a" in context_features
+        ):
+            p_dev_h = float(context_features.get("pace_dev_h", 0.0))
+            p_dev_a = float(context_features.get("pace_dev_a", 0.0))
+            avg_pace_dev = 0.5 * (p_dev_h + p_dev_a)
+            if avg_pace_dev < 0.0:
+                pace_shift = float(self.low_tempo_damping_weight * np.tanh(avg_pace_dev / 0.60))
+                delta_h += pace_shift
+                delta_a += pace_shift
+
         # 7. Venue Edge (Dynamic Home/Away Venue Split - only active if venue_edge_enabled)
         if self.venue_edge_enabled:
             v_edg_h = float(context_features.get("venue_edge_h", 0.0))
@@ -808,6 +823,7 @@ def create_dixon_coles_model(
         "squad_prior_weight": cfg.dixon_coles.squad_prior_weight,
         "early_season_prior_weight": cfg.dixon_coles.early_season_prior_weight,
         "form_momentum_weight": cfg.dixon_coles.form_momentum_weight,
+        "low_tempo_damping_weight": getattr(cfg.dixon_coles, "low_tempo_damping_weight", 0.0),
         "xg_form_weight": getattr(cfg.dixon_coles, "xg_form_weight", 0.0),
         "superiority_calibration_scale": cfg.dixon_coles.superiority_calibration_scale,
         "base_draw_inflation": cfg.dixon_coles.base_draw_inflation,

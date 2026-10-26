@@ -17,6 +17,7 @@ class DixonColesConfig:
     squad_prior_weight: float = 0.18
     early_season_prior_weight: float = 0.15
     form_momentum_weight: float = 0.08
+    low_tempo_damping_weight: float = 0.09
     xg_form_weight: float = 0.0
     superiority_calibration_scale: float = 1.00
     fixed_rho: Optional[float] = None
