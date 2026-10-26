@@ -1,0 +1,115 @@
+{
+  "overall": {
+    "n_matches": 1793,
+    "n_clusters": 194,
+    "mean_model_rps": 0.2022,
+    "mean_market_rps": 0.1908,
+    "mean_delta_rps": 0.0114,
+    "se_naive": 0.0014,
+    "se_cluster_robust": 0.00149,
+    "block_bootstrap_ci_95": [
+      0.0085,
+      0.0143
+    ],
+    "block_bootstrap_p_value": 0.0,
+    "paired_ttest": {
+      "t_stat": 8.134,
+      "p_value": 7.675496979121491e-16
+    },
+    "cluster_robust_ttest": {
+      "t_stat": 7.657,
+      "p_value": 8.912870441690757e-13
+    },
+    "wilcoxon": {
+      "w_stat": 608608.0,
+      "p_value": 4.717598055505324e-19
+    },
+    "conclusion": "Piyasa kapanış oranları modeli istatistiksel olarak kesin ve anlamlı biçimde geride bırakmaktadır (p < 1e-4)."
+  },
+  "season_breakdown": [
+    {
+      "season": "2122",
+      "matches": 380,
+      "mean_model_rps": 0.2088,
+      "mean_market_rps": 0.2045,
+      "mean_delta_rps": 0.0043,
+      "ci_95_lower": -0.0014,
+      "ci_95_upper": 0.0102,
+      "wilcoxon_p_value": 0.131679,
+      "paired_t_p_value": 0.103156,
+      "is_statistically_significant": false,
+      "holm_bonferroni_threshold": 0.05,
+      "is_sig_after_multiple_testing": false
+    },
+    {
+      "season": "2223",
+      "matches": 313,
+      "mean_model_rps": 0.2087,
+      "mean_market_rps": 0.1973,
+      "mean_delta_rps": 0.0114,
+      "ci_95_lower": 0.0059,
+      "ci_95_upper": 0.0166,
+      "wilcoxon_p_value": 0.000119,
+      "paired_t_p_value": 0.000331,
+      "is_statistically_significant": true,
+      "holm_bonferroni_threshold": 0.0125,
+      "is_sig_after_multiple_testing": true
+    },
+    {
+      "season": "2324",
+      "matches": 380,
+      "mean_model_rps": 0.1972,
+      "mean_market_rps": 0.1838,
+      "mean_delta_rps": 0.0134,
+      "ci_95_lower": 0.008,
+      "ci_95_upper": 0.0189,
+      "wilcoxon_p_value": 0.0,
+      "paired_t_p_value": 7e-06,
+      "is_statistically_significant": true,
+      "holm_bonferroni_threshold": 0.00833,
+      "is_sig_after_multiple_testing": true
+    },
+    {
+      "season": "2425",
+      "matches": 342,
+      "mean_model_rps": 0.197,
+      "mean_market_rps": 0.1803,
+      "mean_delta_rps": 0.0167,
+      "ci_95_lower": 0.008,
+      "ci_95_upper": 0.0247,
+      "wilcoxon_p_value": 0.0,
+      "paired_t_p_value": 1.1e-05,
+      "is_statistically_significant": true,
+      "holm_bonferroni_threshold": 0.01,
+      "is_sig_after_multiple_testing": true
+    },
+    {
+      "season": "2526",
+      "matches": 306,
+      "mean_model_rps": 0.1945,
+      "mean_market_rps": 0.1849,
+      "mean_delta_rps": 0.0096,
+      "ci_95_lower": 0.0029,
+      "ci_95_upper": 0.0169,
+      "wilcoxon_p_value": 0.000493,
+      "paired_t_p_value": 0.003361,
+      "is_statistically_significant": true,
+      "holm_bonferroni_threshold": 0.01667,
+      "is_sig_after_multiple_testing": true
+    },
+    {
+      "season": "2627",
+      "matches": 72,
+      "mean_model_rps": 0.2229,
+      "mean_market_rps": 0.2025,
+      "mean_delta_rps": 0.0204,
+      "ci_95_lower": 0.007,
+      "ci_95_upper": 0.0341,
+      "wilcoxon_p_value": 0.021723,
+      "paired_t_p_value": 0.027377,
+      "is_statistically_significant": true,
+      "holm_bonferroni_threshold": 0.025,
+      "is_sig_after_multiple_testing": true
+    }
+  ]
+}

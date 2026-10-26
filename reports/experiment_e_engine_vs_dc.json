@@ -1,0 +1,30 @@
+{
+  "n_evaluated_matches": 497,
+  "n_mc_per_match": 150,
+  "metrics": {
+    "dixon_coles_rps": 0.203336,
+    "matchengine_rps": 0.214799,
+    "delta_rps": 0.011464,
+    "ci_95_delta_rps": [
+      0.006232,
+      0.017001
+    ],
+    "p_paired_t_rps": 4.314129403744897e-05,
+    "p_wilcoxon_rps": 3.509719159819702e-06,
+    "dixon_coles_brier": 0.59778,
+    "matchengine_brier": 0.625003,
+    "delta_brier": 0.027223,
+    "p_paired_t_brier": 1.8787441113969043e-05,
+    "dixon_coles_nll": 1.002357,
+    "matchengine_nll": 1.040681,
+    "delta_nll": 0.038324,
+    "ou25_brier_dc": 0.244209,
+    "ou25_brier_mc": 0.256828,
+    "delta_ou25_brier": 0.012619,
+    "btts_brier_dc": 0.247459,
+    "btts_brier_mc": 0.25107,
+    "delta_btts_brier": 0.003612
+  },
+  "engine_superior": false,
+  "decision": "SENARYO VE ANLATIM ARACI (Tahmin Üstünlüğü Yok, Taktik/Olay Dağılımı İçin Kullanılmalı)"
+}

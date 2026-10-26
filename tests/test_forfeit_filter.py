@@ -10,7 +10,7 @@ from slmodel.evaluate.backtest import WalkForwardBacktest
 
 def test_warehouse_forfeit_status():
     """Verify that 2022/23 earthquake forfeits are marked status='forfeit' in DuckDB."""
-    con = duckdb.connect("data/warehouse.duckdb")
+    con = duckdb.connect("data/warehouse.duckdb", read_only=True)
     forfeits = con.execute("SELECT COUNT(*) FROM matches WHERE status = 'forfeit'").fetchone()[0]
     played = con.execute("SELECT COUNT(*) FROM matches WHERE status = 'played'").fetchone()[0]
     con.close()

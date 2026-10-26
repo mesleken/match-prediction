@@ -1,0 +1,79 @@
+{
+  "n_evaluated_matches": 1413,
+  "warmup_season": "2122",
+  "evaluated_seasons": [
+    "2223",
+    "2324",
+    "2425",
+    "2526",
+    "2627"
+  ],
+  "season_temperatures": {
+    "2223": 0.7715,
+    "2324": 0.7749,
+    "2425": 0.7507,
+    "2526": 0.7331,
+    "2627": 0.7416
+  },
+  "overall_metrics": {
+    "base_rps": 0.200389,
+    "cal_rps": 0.198851,
+    "delta_rps": -0.001538,
+    "ci_95_delta_rps": [
+      -0.003159,
+      8e-06
+    ],
+    "p_paired_t_rps": 0.06291454888719969,
+    "p_wilcoxon_rps": 4.537901517098621e-07,
+    "base_brier": 0.587902,
+    "cal_brier": 0.585151,
+    "delta_brier": -0.002752,
+    "p_paired_t_brier": 0.17168303476041571,
+    "base_nll": 0.987334,
+    "cal_nll": 0.983866,
+    "delta_nll": -0.003468,
+    "p_paired_t_nll": 0.2684452346706397
+  },
+  "favorite_tiers": [
+    {
+      "tier": "Düşük Güven (< %45)",
+      "n": 594,
+      "actual_win_rate": 0.4343,
+      "base_mean_pred": 0.4022,
+      "base_residual_e": 0.0322,
+      "cal_mean_pred": 0.4247,
+      "cal_residual_e": 0.0096,
+      "residual_reduction_pct": 70.1
+    },
+    {
+      "tier": "Orta Güven (%45 - %55)",
+      "n": 464,
+      "actual_win_rate": 0.5259,
+      "base_mean_pred": 0.4935,
+      "base_residual_e": 0.0324,
+      "cal_mean_pred": 0.5458,
+      "cal_residual_e": -0.02,
+      "residual_reduction_pct": 161.6
+    },
+    {
+      "tier": "Yüksek Güven (%55 - %65)",
+      "n": 232,
+      "actual_win_rate": 0.6638,
+      "base_mean_pred": 0.5937,
+      "base_residual_e": 0.0701,
+      "cal_mean_pred": 0.6717,
+      "cal_residual_e": -0.0079,
+      "residual_reduction_pct": 111.3
+    },
+    {
+      "tier": "Çok Yüksek Güven (≥ %65)",
+      "n": 123,
+      "actual_win_rate": 0.7967,
+      "base_mean_pred": 0.7195,
+      "base_residual_e": 0.0773,
+      "cal_mean_pred": 0.8081,
+      "cal_residual_e": -0.0114,
+      "residual_reduction_pct": 114.7
+    }
+  ]
+}

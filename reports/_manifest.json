@@ -1,0 +1,122 @@
+{
+  "system_version": "0.3.0",
+  "generated_at": "2026-10-26T15:08:00+03:00",
+  "git_branch": "main",
+  "git_base_commit": "06f6e9f",
+  "data_warehouse": "data/warehouse.duckdb",
+  "data_records": "reports/historical_eval_records.parquet",
+  "canonical_metrics": {
+    "total_evaluated_matches": 1793,
+    "evaluated_seasons": ["2122", "2223", "2324", "2425", "2526", "2627"],
+    "model_a_closing_market": {
+      "rps": 0.190786,
+      "brier": 0.565695,
+      "accuracy_1x2": 0.5583,
+      "role": "Primary Benchmark"
+    },
+    "model_b_dixon_coles": {
+      "rps": 0.202170,
+      "brier": 0.590566,
+      "accuracy_1x2": 0.5337,
+      "delta_rps_vs_market": 0.011384,
+      "ci_95_delta_rps": [0.0085, 0.0143],
+      "paired_t_stat": 7.657,
+      "p_value": 3.73e-14,
+      "role": "Independent Football Model"
+    },
+    "model_c_optimal_hybrid": {
+      "rps": 0.190838,
+      "brier": 0.565845,
+      "accuracy_1x2": 0.5588,
+      "delta_rps_vs_market": 0.000052,
+      "ci_95_delta_rps": [-0.000255, 0.000354],
+      "paired_t_stat": 0.3343,
+      "p_value": 0.7382,
+      "status": "Experimental Alternative (No Proven Superiority)"
+    },
+    "model_d_residual_correction": {
+      "rps": 0.191570,
+      "brier": 0.567410,
+      "accuracy_1x2": 0.5583,
+      "delta_rps_vs_market": 0.000784,
+      "ci_95_delta_rps": [0.000210, 0.001420],
+      "paired_t_stat": 2.6102,
+      "p_value": 0.0091,
+      "status": "Rejected (Degrades Performance)"
+    },
+    "favorite_calibration_tier_ge_65": {
+      "n_matches": 136,
+      "mean_pred": 0.7166,
+      "actual_win_rate": 0.8015,
+      "mean_residual_e": 0.0849,
+      "cluster_ci_95": [0.0111, 0.1538],
+      "holm_bonferroni_p": 0.0486,
+      "recalibration_temperature": 0.754,
+      "recalibrated_residual_e": -0.0114,
+      "out_of_sample_delta_rps": -0.001538,
+      "wilcoxon_p": 4.54e-07
+    },
+    "forfeit_matches_2022_23": {
+      "total_forfeit": 29,
+      "hatayspor_forfeit": 15,
+      "gaziantep_fk_forfeit": 14,
+      "mutual_forfeit": 0,
+      "h2h_played_before_earthquake": [
+        {"matchday": 3, "score": "1-2", "match_id": 1739},
+        {"matchday": 22, "score": "4-1", "match_id": 1909}
+      ]
+    },
+    "xg_coverage": {
+      "matches_with_raw_xg": 72,
+      "season": "2627",
+      "historical_seasons_mode": "shot_based_proxy"
+    },
+    "matchengine_calibration_moments": {
+      "target_goals": 2.8252,
+      "simulated_goals": 2.8219,
+      "target_yellows": 4.5417,
+      "simulated_yellows": 4.3053,
+      "target_fouls": 26.2304,
+      "simulated_fouls": 24.1833,
+      "target_corners": 9.6146,
+      "simulated_corners": 10.0913,
+      "target_shots": 24.3516,
+      "simulated_shots": 25.5473,
+      "calibration_loss": 0.2997
+    },
+    "matchengine_proof_gate_experiment_e": {
+      "n_evaluated_matches": 497,
+      "n_mc_per_match": 150,
+      "dixon_coles_rps": 0.203336,
+      "matchengine_rps": 0.214799,
+      "delta_rps": 0.011464,
+      "ci_95_delta_rps": [0.006232, 0.017001],
+      "paired_t_p": 4.314e-05,
+      "wilcoxon_p": 3.510e-06,
+      "decision": "SENARYO VE ANLATIM ARACI (Tahmin Üstünlüğü Yok, Taktik/Olay Dağılımı İçin Kullanılmalı)"
+    },
+    "xg_form_features_experiment_g": {
+      "n_evaluated_matches": 1793,
+      "temperature": 0.75,
+      "model_b0_rps": 0.200772,
+      "model_g1_rps": 0.200381,
+      "delta_rps_g1": -0.000391,
+      "ci_95_delta_rps_g1": [-0.000748, 0.000017],
+      "paired_t_p_g1": 0.0531,
+      "decision": "G-KAPISI GEÇİLMEDİ (Vekil xG Formu Anlamlı Kazanç Sağlamadı - Katsayı Kapalı Tutulmalı)"
+    }
+  },
+  "verified_report_files": [
+    "reports/2022_23_hukmen_maclar_denetim_listesi.md",
+    "reports/deney_a_istatistiksel_anlamlilik.md",
+    "reports/deney_b_kalibrasyon_ve_ece.md",
+    "reports/deney_c_4_model_karsilastirmasi.md",
+    "reports/deney_d_piyasa_avantaji_kaynagi.md",
+    "reports/deney_e_matchengine_kanit_kapisi.md",
+    "reports/deney_f_favori_kalibrasyon_ve_sicaklik.md",
+    "reports/deney_g_xg_ozellikleri.md",
+    "reports/matchengine_simulasyon_raporu.md",
+    "reports/skor_modeli_derin_analiz.md",
+    "reports/gecmis_gercek_veri_test_raporu.md"
+  ]
+}

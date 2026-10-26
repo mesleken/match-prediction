@@ -219,3 +219,22 @@ def test_robust_kelly_uncertainty_shrinkage():
     assert k_certain["edge"] > 0
     assert k_certain["robust_kelly"] > k_uncertain["robust_kelly"] > k_very_uncertain["robust_kelly"] > 0.0
     assert k_uncertain["uncertainty_shrinkage"] < 1.0
+
+
+def test_temperature_scaling_calibration():
+    """Verify that calibrate_probabilities sharpens underconfident favorite probabilities."""
+    from slmodel.simulate.markets import calibrate_probabilities
+
+    # Uncalibrated heavy favorite
+    raw_p = np.array([0.70, 0.20, 0.10])
+    cal_p = calibrate_probabilities(raw_p, temperature=0.75)
+
+    assert np.isclose(np.sum(cal_p), 1.0)
+    # T < 1.0 sharpens favorite probability towards empirical reality (~78%)
+    assert cal_p[0] > raw_p[0]
+    assert cal_p[1] < raw_p[1]
+    assert cal_p[2] < raw_p[2]
+
+    # Neutral temperature returns original probabilities
+    neutral_p = calibrate_probabilities(raw_p, temperature=1.0)
+    assert np.allclose(neutral_p, raw_p)

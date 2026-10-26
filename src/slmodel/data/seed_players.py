@@ -531,13 +531,19 @@ def seed_players_database(db_path: str = "data/warehouse.duckdb", json_out: str 
     players_rows = []
     name_to_id: dict[tuple[int, str], int] = {}
 
-    # Canonical pre-season baseline is SQUADS_DATA (frozen, no in-season circular leakage)
-    squads_source = SQUADS_DATA
-    # Always persist frozen baseline to squads_2627.json
-    try:
-        Path(json_out).write_text(json.dumps({str(k): v for k, v in SQUADS_DATA.items()}, indent=2, ensure_ascii=False), encoding="utf-8")
-    except Exception:
-        pass
+    # Read clean frozen pre-season squads (Mackolik 599-player dataset) if available
+    squads_source = {}
+    p_json = Path(json_out)
+    if p_json.exists():
+        try:
+            with open(p_json, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                squads_source = {int(k): v for k, v in loaded.items()}
+        except Exception:
+            squads_source = {}
+
+    if not squads_source:
+        squads_source = SQUADS_DATA
 
     for tid, sdata in squads_source.items():
         for p in sdata["players"]:
@@ -565,11 +571,13 @@ def seed_players_database(db_path: str = "data/warehouse.duckdb", json_out: str 
 
     synergy_rows = []
     for tid, sdata in squads_source.items():
-        for utype, p1_name, p2_name, score in sdata.get("synergies", []):
-            p1_id = name_to_id.get((tid, p1_name))
-            p2_id = name_to_id.get((tid, p2_name))
-            if p1_id and p2_id:
-                synergy_rows.append((tid, utype, p1_id, p2_id, float(score)))
+        for item in sdata.get("synergies", []):
+            if len(item) == 4:
+                utype, p1_name, p2_name, score = item
+                p1_id = name_to_id.get((tid, p1_name))
+                p2_id = name_to_id.get((tid, p2_name))
+                if p1_id and p2_id:
+                    synergy_rows.append((tid, utype, p1_id, p2_id, float(score)))
 
     if synergy_rows:
         con.executemany("""

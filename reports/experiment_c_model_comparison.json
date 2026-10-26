@@ -1,0 +1,118 @@
+{
+  "n_matches": 1793,
+  "mean_learned_weight_model_b": 0.056,
+  "paired_c_vs_a": {
+    "mean_delta_unrounded": 5.2e-05,
+    "ci_95": [
+      -0.000255,
+      0.000354
+    ],
+    "t_stat": 0.3343,
+    "p_value": 0.7382,
+    "is_significant": false
+  },
+  "models": {
+    "model_a_pure_market": {
+      "rps": 0.1908,
+      "rps_unrounded": 0.190786,
+      "hit_1x2_pct": 55.8,
+      "brier": 0.5657,
+      "brier_unrounded": 0.565695
+    },
+    "model_b_pure_dixon_coles": {
+      "rps": 0.2022,
+      "rps_unrounded": 0.20217,
+      "hit_1x2_pct": 53.4,
+      "brier": 0.5906,
+      "brier_unrounded": 0.590566
+    },
+    "model_c_optimal_blend": {
+      "rps": 0.1908,
+      "rps_unrounded": 0.190838,
+      "hit_1x2_pct": 55.9,
+      "brier": 0.5658,
+      "brier_unrounded": 0.565845
+    },
+    "model_d_residual_adjusted": {
+      "rps": 0.1916,
+      "rps_unrounded": 0.19157,
+      "hit_1x2_pct": 55.8,
+      "brier": 0.5674,
+      "brier_unrounded": 0.56741
+    }
+  },
+  "seasons": [
+    {
+      "season": "2122",
+      "matches": 380,
+      "model_a_mkt_rps": 0.2045,
+      "model_b_dc_rps": 0.2088,
+      "model_c_blend_rps": 0.2047,
+      "model_d_res_rps": 0.2048,
+      "model_a_hit_pct": 52.6,
+      "model_b_hit_pct": 53.9,
+      "model_c_hit_pct": 53.2,
+      "model_d_hit_pct": 52.9
+    },
+    {
+      "season": "2223",
+      "matches": 313,
+      "model_a_mkt_rps": 0.1973,
+      "model_b_dc_rps": 0.2087,
+      "model_c_blend_rps": 0.1973,
+      "model_d_res_rps": 0.1981,
+      "model_a_hit_pct": 55.3,
+      "model_b_hit_pct": 53.4,
+      "model_c_hit_pct": 55.3,
+      "model_d_hit_pct": 55.0
+    },
+    {
+      "season": "2324",
+      "matches": 380,
+      "model_a_mkt_rps": 0.1838,
+      "model_b_dc_rps": 0.1972,
+      "model_c_blend_rps": 0.1838,
+      "model_d_res_rps": 0.1847,
+      "model_a_hit_pct": 55.5,
+      "model_b_hit_pct": 54.7,
+      "model_c_hit_pct": 55.5,
+      "model_d_hit_pct": 55.8
+    },
+    {
+      "season": "2425",
+      "matches": 342,
+      "model_a_mkt_rps": 0.1803,
+      "model_b_dc_rps": 0.197,
+      "model_c_blend_rps": 0.1803,
+      "model_d_res_rps": 0.1814,
+      "model_a_hit_pct": 61.7,
+      "model_b_hit_pct": 55.6,
+      "model_c_hit_pct": 61.7,
+      "model_d_hit_pct": 61.7
+    },
+    {
+      "season": "2526",
+      "matches": 306,
+      "model_a_mkt_rps": 0.1849,
+      "model_b_dc_rps": 0.1945,
+      "model_c_blend_rps": 0.1849,
+      "model_d_res_rps": 0.1855,
+      "model_a_hit_pct": 54.6,
+      "model_b_hit_pct": 50.0,
+      "model_c_hit_pct": 54.2,
+      "model_d_hit_pct": 53.9
+    },
+    {
+      "season": "2627",
+      "matches": 72,
+      "model_a_mkt_rps": 0.2025,
+      "model_b_dc_rps": 0.2229,
+      "model_c_blend_rps": 0.2025,
+      "model_d_res_rps": 0.2041,
+      "model_a_hit_pct": 54.2,
+      "model_b_hit_pct": 48.6,
+      "model_c_hit_pct": 54.2,
+      "model_d_hit_pct": 54.2
+    }
+  ]
+}
