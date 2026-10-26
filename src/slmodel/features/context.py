@@ -9,6 +9,7 @@ import pandas as pd
 import yaml
 
 from slmodel.config import get_model_config
+from slmodel.features.xg_proxy import compute_opponent_adjusted_xg_form
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -46,11 +47,13 @@ class ContextFeatureExtractor:
         self,
         db_path: str = "data/warehouse.duckdb",
         derbies_path: str = "config/derbies.yaml",
+        cfg: Optional[Any] = None,
     ) -> None:
         self.db_path = db_path
         self.derbies_path = derbies_path
-        self.cfg = get_model_config()
+        self.cfg = cfg if cfg is not None else get_model_config()
         self._referee_engine = None
+        self._availability_resolver = None
         self._weather_cache: dict[int, tuple[float, float, float]] = {}
         self._load_derbies()
         self._load_stadiums()
@@ -88,7 +91,7 @@ class ContextFeatureExtractor:
                         self.derby_pairs.add((int(t[1]), int(t[0])))
 
     def _load_stadiums(self) -> None:
-        con = duckdb.connect(self.db_path)
+        con = duckdb.connect(self.db_path, read_only=True)
         try:
             df = con.execute("SELECT stadium_id, lat, lon, altitude_m FROM stadiums").fetchdf()
             self.stadiums = df.set_index("stadium_id").to_dict(orient="index")
@@ -361,6 +364,30 @@ class ContextFeatureExtractor:
                 if weather_temp < 2.0 or weather_temp > 32.0:
                     weather_delta_pace -= 0.015
 
+        # 8. Opponent-adjusted xG form momentum
+        xg_form_h = compute_opponent_adjusted_xg_form(home_team_id, prior)
+        xg_form_a = compute_opponent_adjusted_xg_form(away_team_id, prior)
+
+        # 9. Squad Availability Shifts (if enabled in config)
+        avail_shift_h = 0.0
+        avail_shift_a = 0.0
+        if getattr(self.cfg.external_factors, "availability_enabled", False):
+            if self._availability_resolver is None:
+                from slmodel.models.availability import AvailabilityResolver
+                self._availability_resolver = AvailabilityResolver(db_path=self.db_path)
+
+            roster_h = self._availability_resolver.resolve_team_availability(home_team_id, match_id=match_id, as_of=target_ts)
+            roster_a = self._availability_resolver.resolve_team_availability(away_team_id, match_id=match_id, as_of=target_ts)
+
+            max_p = self.cfg.availability.max_single_player_lambda_shift
+            max_team = self.cfg.availability.max_team_lambda_shift
+
+            missing_h = sum((1.0 - p.get("p_play", 1.0)) * min(max_p, p.get("att_rating", 0.20) * 0.15) for p in roster_h if p.get("is_starter", False) or p.get("status") in ("out", "injured", "doubtful"))
+            missing_a = sum((1.0 - p.get("p_play", 1.0)) * min(max_p, p.get("att_rating", 0.20) * 0.15) for p in roster_a if p.get("is_starter", False) or p.get("status") in ("out", "injured", "doubtful"))
+
+            avail_shift_h = -float(np.clip(missing_h, 0.0, max_team))
+            avail_shift_a = -float(np.clip(missing_a, 0.0, max_team))
+
         return {
             "home_rest_days": h_rest,
             "away_rest_days": a_rest,
@@ -392,4 +419,10 @@ class ContextFeatureExtractor:
             "ref_draw_inf": ref_draw_inf,
             "ref_whistle_index": ref_whistle,
             "ref_card_mult": ref_card_mult,
+            "xg_att_form_h": xg_form_h["xg_att_form"],
+            "xg_def_vuln_h": xg_form_h["xg_def_vuln"],
+            "xg_att_form_a": xg_form_a["xg_att_form"],
+            "xg_def_vuln_a": xg_form_a["xg_def_vuln"],
+            "avail_shift_h": avail_shift_h,
+            "avail_shift_a": avail_shift_a,
         }

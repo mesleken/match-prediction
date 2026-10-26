@@ -90,12 +90,15 @@ def test_no_leakage_on_exact_kickoff_timestamp():
     assert model.mu0 < 1.0
 
 
-def test_no_squad_prior_data_leakage():
+def test_no_squad_prior_data_leakage(tmp_path):
     """
     Verify that generating in-season player statistics or re-aggregating ratings
     never alters pre-season 'players' table or Empirical Bayes squad priors.
     Guarantees week-1 match predictions are mathematically invariant to week-8 simulated performance.
+    Runs strictly in an isolated temporary DuckDB file to guarantee no production DB mutation.
     """
+    import shutil
+    from pathlib import Path
     import duckdb
     from slmodel.models.dixon_coles import compute_squad_priors
     from slmodel.data.player_performance import (
@@ -103,21 +106,23 @@ def test_no_squad_prior_data_leakage():
         compute_player_season_stats_and_ratings,
     )
 
-    db_path = "data/warehouse.duckdb"
+    db_src = Path("data/warehouse.duckdb")
+    test_db = str(tmp_path / "test_isolated_leakage.duckdb")
+    shutil.copy(db_src, test_db)
 
     # 1. Baseline squad priors and player ratings
-    priors_before = compute_squad_priors(db_path=db_path)
-    con = duckdb.connect(db_path, read_only=True)
+    priors_before = compute_squad_priors(db_path=test_db)
+    con = duckdb.connect(test_db, read_only=True)
     df_players_before = con.execute("SELECT player_id, att_rating, def_rating, overall_rating FROM players ORDER BY player_id").fetchdf()
     con.close()
 
     # 2. Trigger in-season performance generation and Bayesian update
-    generate_and_sync_player_match_stats(db_path=db_path, season="2627")
-    compute_player_season_stats_and_ratings(db_path=db_path, season="2627")
+    generate_and_sync_player_match_stats(db_path=test_db, season="2627")
+    compute_player_season_stats_and_ratings(db_path=test_db, season="2627")
 
     # 3. Re-read squad priors and player ratings
-    priors_after = compute_squad_priors(db_path=db_path)
-    con = duckdb.connect(db_path, read_only=True)
+    priors_after = compute_squad_priors(db_path=test_db)
+    con = duckdb.connect(test_db, read_only=True)
     df_players_after = con.execute("SELECT player_id, att_rating, def_rating, overall_rating FROM players ORDER BY player_id").fetchdf()
     con.close()
 
@@ -135,13 +140,12 @@ def test_no_squad_prior_data_leakage():
 def test_ablation_factor_alters_predictions():
     """
     Verify that ablation neutralizers genuinely perturb match predictions
-    when active feature values are present (ruling out silent no-ops).
+    when active feature values are present and candidate flags are enabled.
     """
-    from slmodel.evaluate.backtest import AblationRunner
-    from slmodel.features.context import ContextFeatureExtractor
     from slmodel.models.dixon_coles import DixonColesModel
 
-    model = DixonColesModel()
+    # Enable experimental factors to test leave-one-out sensitivity
+    model = DixonColesModel(referee_enabled=True, weather_enabled=True, euro_fatigue_enabled=True, venue_edge_enabled=True)
     # Mock context with non-zero referee flow and non-zero weather pace
     ctx_active = {
         "ref_delta_h": 0.08,
@@ -165,11 +169,17 @@ def test_ablation_factor_alters_predictions():
     ctx_no_ref["ref_delta_h"] = 0.0
     ctx_no_ref["ref_delta_a"] = 0.0
     ctx_no_ref["ref_draw_inf"] = 0.0
-    lam_abl, mu_abl, _ = model.predict_lambdas(1, 2, context_features=ctx_no_ref)
+    lam_abl_ref, mu_abl_ref, _ = model.predict_lambdas(1, 2, context_features=ctx_no_ref)
 
-    # Must show non-zero shift
-    assert not np.isclose(lam_full, lam_abl, atol=1e-4)
-    assert not np.isclose(mu_full, mu_abl, atol=1e-4)
+    # Must show non-zero shift for referee
+    assert not np.isclose(lam_full, lam_abl_ref, atol=1e-4)
+    assert not np.isclose(mu_full, mu_abl_ref, atol=1e-4)
+
+    # Ablate weather
+    ctx_no_wth = dict(ctx_active)
+    ctx_no_wth["weather_delta_pace"] = 0.0
+    lam_abl_wth, mu_abl_wth, _ = model.predict_lambdas(1, 2, context_features=ctx_no_wth)
+    assert not np.isclose(lam_full, lam_abl_wth, atol=1e-4)
 
 
 def test_backtest_config_matches_production():

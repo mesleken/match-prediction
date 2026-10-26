@@ -26,9 +26,9 @@ def compute_squad_priors(db_path: str = "data/warehouse.duckdb") -> dict[int, tu
             return {}
         p_df = con.execute("""
             SELECT p.team_id, 
-                   SUM(p.market_value_eur) as squad_val,
-                   AVG(CASE WHEN p.is_starter THEN p.overall_rating ELSE NULL END) as starter_ovr,
-                   AVG(CASE WHEN p.is_starter AND p.position IN ('FW', 'AM', 'RW', 'LW', 'ST') THEN p.att_rating ELSE NULL END) as starter_att,
+                   AVG(CASE WHEN p.is_starter THEN p.market_value_eur ELSE p.market_value_eur END) as squad_val,
+                   AVG(CASE WHEN p.is_starter THEN p.overall_rating ELSE p.overall_rating END) as starter_ovr,
+                   AVG(CASE WHEN p.is_starter AND p.position IN ('FW', 'AM', 'RW', 'LW', 'ST', 'CF') THEN p.att_rating ELSE NULL END) as starter_att,
                    AVG(CASE WHEN p.is_starter AND p.position IN ('CB', 'LB', 'RB', 'GK', 'DM') THEN p.def_rating ELSE NULL END) as starter_def
             FROM players p
             GROUP BY p.team_id
@@ -79,11 +79,17 @@ class DixonColesModel:
         squad_prior_weight: float = 0.0,
         early_season_prior_weight: float = 0.0,
         form_momentum_weight: float = 0.0,
+        xg_form_weight: float = 0.0,
         superiority_calibration_scale: float = 1.0,
         base_draw_inflation: float = 0.0,
         closeness_draw_threshold: float = 0.0,
         closeness_draw_boost: float = 0.0,
         fixed_rho: Optional[float] = None,
+        venue_edge_enabled: bool = False,
+        weather_enabled: bool = False,
+        euro_fatigue_enabled: bool = False,
+        referee_enabled: bool = False,
+        availability_enabled: bool = False,
         team_squad_priors: Optional[dict[int, tuple[float, float]]] = None,
         **kwargs: Any,
     ) -> None:
@@ -99,11 +105,17 @@ class DixonColesModel:
         self.squad_prior_weight = squad_prior_weight
         self.early_season_prior_weight = early_season_prior_weight
         self.form_momentum_weight = form_momentum_weight
+        self.xg_form_weight = xg_form_weight
         self.superiority_calibration_scale = superiority_calibration_scale
         self.base_draw_inflation = base_draw_inflation
         self.closeness_draw_threshold = closeness_draw_threshold
         self.closeness_draw_boost = closeness_draw_boost
         self.fixed_rho = fixed_rho
+        self.venue_edge_enabled = venue_edge_enabled
+        self.weather_enabled = weather_enabled
+        self.euro_fatigue_enabled = euro_fatigue_enabled
+        self.referee_enabled = referee_enabled
+        self.availability_enabled = availability_enabled
         self.team_squad_priors = team_squad_priors or {}
 
         # Fitted parameters
@@ -528,23 +540,19 @@ class DixonColesModel:
         if float(context_features.get("is_derby", 0.0)) > 0.5:
             draw_inf += 0.04
 
-        # 6. Form Momentum (decomposed attack form, opponent defensive vulnerability, and venue edge)
+        # 6. Form Momentum (decomposed attack form and opponent defensive vulnerability)
         if "form_att_h" in context_features and self.form_momentum_weight > 0.0:
             f_att_h = float(context_features.get("form_att_h", 0.0))
             f_def_h = float(context_features.get("form_def_vuln_h", 0.0))
-            v_edg_h = float(context_features.get("venue_edge_h", 0.0))
             f_att_a = float(context_features.get("form_att_a", 0.0))
             f_def_a = float(context_features.get("form_def_vuln_a", 0.0))
-            v_edg_a = float(context_features.get("venue_edge_a", 0.0))
             delta_h += (
                 self.form_momentum_weight * float(np.tanh(f_att_h / 0.8))
                 + self.form_momentum_weight * float(np.tanh(f_def_a / 0.8))
-                + 0.05 * float(np.tanh(v_edg_h))
             )
             delta_a += (
                 self.form_momentum_weight * float(np.tanh(f_att_a / 0.8))
                 + self.form_momentum_weight * float(np.tanh(f_def_h / 0.8))
-                + 0.05 * float(np.tanh(v_edg_a))
             )
         elif self.form_momentum_weight > 0.0:
             form_h = float(context_features.get("form_momentum_h", 0.0))
@@ -552,10 +560,50 @@ class DixonColesModel:
             delta_h += self.form_momentum_weight * float(np.tanh(form_h / 1.5))
             delta_a += self.form_momentum_weight * float(np.tanh(form_a / 1.5))
 
-        # 7. Referee Flow, Pace & Draw Inflation
-        delta_h += float(context_features.get("ref_delta_h", 0.0))
-        delta_a += float(context_features.get("ref_delta_a", 0.0))
-        draw_inf += float(context_features.get("ref_draw_inf", 0.0))
+        # 6b. Opponent-adjusted xG Form Momentum
+        if "xg_att_form_h" in context_features and getattr(self, "xg_form_weight", 0.0) > 0.0:
+            w_xg = float(self.xg_form_weight)
+            xg_f_att_h = float(context_features.get("xg_att_form_h", 0.0))
+            xg_f_def_h = float(context_features.get("xg_def_vuln_h", 0.0))
+            xg_f_att_a = float(context_features.get("xg_att_form_a", 0.0))
+            xg_f_def_a = float(context_features.get("xg_def_vuln_a", 0.0))
+            delta_h += (
+                w_xg * float(np.tanh(xg_f_att_h / 0.8))
+                + w_xg * float(np.tanh(xg_f_def_a / 0.8))
+            )
+            delta_a += (
+                w_xg * float(np.tanh(xg_f_att_a / 0.8))
+                + w_xg * float(np.tanh(xg_f_def_h / 0.8))
+            )
+
+        # 7. Venue Edge (Dynamic Home/Away Venue Split - only active if venue_edge_enabled)
+        if self.venue_edge_enabled:
+            v_edg_h = float(context_features.get("venue_edge_h", 0.0))
+            v_edg_a = float(context_features.get("venue_edge_a", 0.0))
+            delta_h += 0.05 * float(np.tanh(v_edg_h))
+            delta_a += 0.05 * float(np.tanh(v_edg_a))
+
+        # 8. European Competition Rest and Travel Fatigue
+        if self.euro_fatigue_enabled:
+            delta_h += float(context_features.get("euro_fatigue_h", 0.0))
+            delta_a += float(context_features.get("euro_fatigue_a", 0.0))
+
+        # 9. Extreme Weather Pace Dampening
+        if self.weather_enabled:
+            pace_shift = float(context_features.get("weather_delta_pace", 0.0))
+            delta_h += pace_shift
+            delta_a += pace_shift
+
+        # 10. Referee Flow, Pace & Draw Inflation (only active if referee_enabled)
+        if self.referee_enabled:
+            delta_h += float(context_features.get("ref_delta_h", 0.0))
+            delta_a += float(context_features.get("ref_delta_a", 0.0))
+            draw_inf += float(context_features.get("ref_draw_inf", 0.0))
+
+        # 11. Squad Availability / Injury Shifts
+        if self.availability_enabled:
+            delta_h += float(context_features.get("avail_shift_h", 0.0))
+            delta_a += float(context_features.get("avail_shift_a", 0.0))
 
         return float(delta_h), float(delta_a), float(draw_inf)
 
@@ -734,3 +782,44 @@ class DixonColesModel:
             unc["lam"], unc["mu"], unc["rho"],
             draw_inflation=unc["draw_inflation"], max_goals=max_goals
         )
+
+
+def create_dixon_coles_model(
+    cfg: Optional[Any] = None,
+    team_squad_priors: Optional[dict[int, tuple[float, float]]] = None,
+    **kwargs: Any,
+) -> DixonColesModel:
+    """
+    Unified canonical factory for instantiating DixonColesModel from ModelConfig.
+    Guarantees that CLI, backtest, audit, dashboard, and simulation share
+    the exact same architectural parameters and flag wiring.
+    """
+    if cfg is None:
+        from slmodel.config import get_model_config
+        cfg = get_model_config()
+
+    params: dict[str, Any] = {
+        "half_life_years": cfg.dixon_coles.half_life_years,
+        "ridge_att": cfg.dixon_coles.ridge_att,
+        "ridge_def": cfg.dixon_coles.ridge_def,
+        "shot_alpha": cfg.dixon_coles.shot_alpha,
+        "season_carryover": cfg.dixon_coles.season_carryover,
+        "in_season_boost": cfg.dixon_coles.in_season_boost,
+        "squad_prior_weight": cfg.dixon_coles.squad_prior_weight,
+        "early_season_prior_weight": cfg.dixon_coles.early_season_prior_weight,
+        "form_momentum_weight": cfg.dixon_coles.form_momentum_weight,
+        "xg_form_weight": getattr(cfg.dixon_coles, "xg_form_weight", 0.0),
+        "superiority_calibration_scale": cfg.dixon_coles.superiority_calibration_scale,
+        "base_draw_inflation": cfg.dixon_coles.base_draw_inflation,
+        "closeness_draw_threshold": cfg.dixon_coles.closeness_draw_threshold,
+        "closeness_draw_boost": cfg.dixon_coles.closeness_draw_boost,
+        "fixed_rho": cfg.dixon_coles.fixed_rho,
+        "venue_edge_enabled": cfg.external_factors.venue_edge_enabled,
+        "weather_enabled": cfg.external_factors.weather_enabled,
+        "euro_fatigue_enabled": cfg.external_factors.euro_fatigue_enabled,
+        "referee_enabled": cfg.referee.enabled,
+        "availability_enabled": cfg.external_factors.availability_enabled,
+        "team_squad_priors": team_squad_priors or {},
+    }
+    params.update(kwargs)
+    return DixonColesModel(**params)
