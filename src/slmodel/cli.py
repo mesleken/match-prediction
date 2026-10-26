@@ -18,6 +18,7 @@ import duckdb
 import numpy as np
 import pandas as pd
 import rapidfuzz.process
+from slmodel.config import get_model_config
 from slmodel.ingest.footballdata import FootballDataFetcher
 from slmodel.ingest.sync import sync_latest_data, get_last_sync_info
 from slmodel.etl.transform import WarehouseETL
@@ -438,13 +439,26 @@ def _resolve_team(query: str, con: duckdb.DuckDBPyConnection) -> tuple[int, str]
 def lineup_command(
     team: str = typer.Argument(..., help="Team name or abbreviation (e.g. Galatasaray, Fenerbahce)"),
     db_path: str = typer.Option("data/warehouse.duckdb", "--db", help="Path to DuckDB database"),
+    match_id: Optional[int] = typer.Option(None, "--match", "-m", help="Match ID for official lineup snapshot"),
+    starters: Optional[str] = typer.Option(None, "--starters", help="Comma-separated starter player IDs for official XI snapshot"),
+    bench: Optional[str] = typer.Option(None, "--bench", help="Comma-separated bench player IDs for official XI snapshot"),
 ) -> None:
-    """Display 2026/27 team squad, ratings, tactical unit synergies, and marginal player importance."""
-    con = duckdb.connect(db_path)
+    """Display 2026/27 team squad, ratings, or record official matchday lineup snapshot."""
+    con = duckdb.connect(db_path, read_only=True)
     try:
         t_id, t_name = _resolve_team(team, con)
     finally:
         con.close()
+
+    if match_id is not None and starters:
+        from slmodel.tracking.lineup_log import record_official_starting_xi
+        st_ids = [int(x.strip()) for x in starters.split(",") if x.strip()]
+        b_ids = [int(x.strip()) for x in bench.split(",") if x.strip()] if bench else []
+        n_saved = record_official_starting_xi(
+            match_id=match_id, team_id=t_id, starter_player_ids=st_ids, bench_player_ids=b_ids, db_path=db_path
+        )
+        typer.secho(f"✅ {t_name} için resmi maç kadrosu kaydedildi ({n_saved} oyuncu). Maç ID: {match_id}", fg=typer.colors.BRIGHT_GREEN, bold=True)
+        return
 
     eng = PlayerRatingEngine(db_path=db_path)
     starters = eng.get_default_lineup(t_id)
@@ -547,25 +561,9 @@ def predict(
 
     # 2. Fit Production Dixon-Coles Hybrid Model & Side Markets from unified config
     cfg = get_model_config()
-    from slmodel.models.dixon_coles import compute_squad_priors
+    from slmodel.models.dixon_coles import compute_squad_priors, create_dixon_coles_model
     sq_priors = compute_squad_priors(db_path=db_path) if cfg.dixon_coles.squad_prior_weight > 0 else {}
-    model = DixonColesModel(
-        half_life_years=cfg.dixon_coles.half_life_years,
-        season_carryover=cfg.dixon_coles.season_carryover,
-        in_season_boost=cfg.dixon_coles.in_season_boost,
-        shot_alpha=cfg.dixon_coles.shot_alpha,
-        ridge_att=cfg.dixon_coles.ridge_att,
-        ridge_def=cfg.dixon_coles.ridge_def,
-        squad_prior_weight=cfg.dixon_coles.squad_prior_weight,
-        early_season_prior_weight=cfg.dixon_coles.early_season_prior_weight,
-        form_momentum_weight=cfg.dixon_coles.form_momentum_weight,
-        superiority_calibration_scale=cfg.dixon_coles.superiority_calibration_scale,
-        base_draw_inflation=cfg.dixon_coles.base_draw_inflation,
-        closeness_draw_threshold=cfg.dixon_coles.closeness_draw_threshold,
-        closeness_draw_boost=cfg.dixon_coles.closeness_draw_boost,
-        fixed_rho=cfg.dixon_coles.fixed_rho,
-        team_squad_priors=sq_priors,
-    )
+    model = create_dixon_coles_model(cfg, team_squad_priors=sq_priors)
     model.fit(matches_df, as_of=now_utc)
 
     side_model = SideMarketsModel(
@@ -848,6 +846,9 @@ def predict(
             lam_away=lam_a,
             rho=rho,
             score_matrix_arr=M_active,
+            avail_shift_h=ctx_feats.get("avail_shift_h", 0.0),
+            avail_shift_a=ctx_feats.get("avail_shift_a", 0.0),
+            lineup_known=False,
         )
         typer.secho("\n[CRYPTOGRAPHIC AUDIT LEDGER]", fg=typer.colors.GREEN, bold=True)
         typer.echo(f"  Logged to prediction_log (Pred ID: #{log_res['pred_id']})")
@@ -1183,17 +1184,33 @@ def sync_external_command(
 
 @app.command(name="availability")
 def availability_command(
-    action: str = typer.Argument("list", help="list, set, or clear"),
+    action: str = typer.Argument("list", help="list, set, snapshot, or clear"),
     team_id: Optional[int] = typer.Option(None, "--team", "-t", help="Team ID"),
     player_id: Optional[int] = typer.Option(None, "--player", "-p", help="Player ID"),
     status: Optional[str] = typer.Option(None, "--status", "-s", help="Status: out, doubtful, available"),
     note: Optional[str] = typer.Option(None, "--note", help="Reason note"),
     override_id: Optional[int] = typer.Option(None, "--id", help="Override ID to clear"),
+    show_snapshots: bool = typer.Option(False, "--snapshots", "-S", help="Show recent recorded availability snapshots"),
 ) -> None:
-    """Manage player absences and manual overrides."""
+    """Manage player absences, manual overrides, and prospective snapshots."""
     resolver = AvailabilityResolver()
 
     if action == "list":
+        if show_snapshots:
+            from slmodel.tracking.lineup_log import get_latest_availability_summary
+            snaps = get_latest_availability_summary(team_id=team_id)
+            if not snaps:
+                typer.echo("Kayıtlı anlık devamsızlık görüntüsü (snapshot) bulunmuyor.")
+                return
+
+            typer.secho("\n📸 SON KAYITLI EKSİK / DEVAMSIZLIK ANLIK GÖRÜNTÜLERİ (SNAPSHOTS)", fg=typer.colors.CYAN, bold=True)
+            typer.echo(" ID            | Takım           | Oyuncu               | Durum    | Zaman (UTC)           | Gerekçe")
+            typer.echo("-" * 90)
+            for s in snaps[:30]:
+                typer.echo(f" {s['snapshot_id']} | {s['team_name']:15s} | {s['player_name']:20s} | {s['status']:8s} | {str(s['fetched_at'])[:19]} | {s['reason'] or s['source']}")
+            typer.echo("")
+            return
+
         overrides = resolver.list_active_overrides(team_id=team_id)
         if not overrides:
             typer.echo("Aktif manuel eksik kaydı bulunmuyor.")
@@ -1206,6 +1223,15 @@ def availability_command(
             st_color = typer.colors.RED if o["status"] == "out" else typer.colors.YELLOW
             typer.echo(f" {o['override_id']} | {o['team_name']:15s} | {o['player_name']:20s} | {o['position']:3s} | {o['status']:8s} | {o['note'] or '-'}")
         typer.echo("")
+
+    elif action == "snapshot":
+        if not team_id or not player_id or not status:
+            typer.secho("Hata: 'snapshot' için --team, --player ve --status zorunludur.", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+        from slmodel.tracking.lineup_log import record_team_availability_snapshot
+        p_row = {"player_id": player_id, "status": status, "reason": note or "CLI Snapshot"}
+        n_rec = record_team_availability_snapshot(team_id=team_id, players_status=[p_row])
+        typer.secho(f"✅ Anlık devamsızlık snapshot kaydı eklendi (Takım: {team_id}, Oyuncu: {player_id}, Durum: {status.upper()}).", fg=typer.colors.GREEN)
 
     elif action == "set":
         if not team_id or not player_id or not status:
@@ -1274,6 +1300,137 @@ def ablate_command(
             fg=color,
         )
     typer.secho("=" * 105 + "\n", fg=typer.colors.CYAN)
+
+
+@app.command(name="simulate")
+def simulate_command(
+    home: str = typer.Argument(..., help="Home team name or abbreviation (e.g. Galatasaray, GS)"),
+    away: str = typer.Argument(..., help="Away team name or abbreviation (e.g. Fenerbahce, FB)"),
+    odds: Optional[str] = typer.Option(None, "--odds", "-o", help="Pre-match 1X2 odds separated by commas (e.g. '2.20,3.30,3.10')"),
+    n_sims: int = typer.Option(1000, "--n-sims", "-n", help="Number of Monte Carlo simulations (default: 1000)"),
+    referee: Optional[str] = typer.Option(None, "--referee", "-r", help="Match referee name (e.g. 'Halil Umut Meler')"),
+    timeline: bool = typer.Option(False, "--timeline", "-t", help="Display chronological event timeline from a sample match"),
+    seed: int = typer.Option(42, "--seed", "-s", help="Random seed for simulation reproducibility"),
+    output: Optional[str] = typer.Option(None, "--output", help="Optional path to save markdown simulation report"),
+    db_path: str = typer.Option("data/warehouse.duckdb", "--db", help="Path to DuckDB database"),
+) -> None:
+    """Run dynamic event-based MatchEngine simulation and Monte Carlo scenario analysis."""
+    from slmodel.services.prediction_service import MatchPredictionService
+    from slmodel.simulate.state import EventType
+
+    con = duckdb.connect(db_path, read_only=True)
+    try:
+        h_id, h_name = _resolve_team(home, con)
+        a_id, a_name = _resolve_team(away, con)
+    finally:
+        con.close()
+
+    closing_odds = None
+    if odds:
+        parts = [p.strip() for p in odds.split(",")]
+        if len(parts) == 3:
+            try:
+                closing_odds = {"1": float(parts[0]), "X": float(parts[1]), "2": float(parts[2])}
+            except ValueError:
+                typer.secho("Hata: Oranlar geçerli sayılar olmalıdır (ör. 2.20,3.30,3.10)", fg=typer.colors.RED)
+                raise typer.Exit(code=1)
+
+    typer.secho("\n" + "=" * 80, fg=typer.colors.CYAN, bold=True)
+    typer.secho(f"⚽ MATCHENGINE DİNAMİK MAÇ SİMÜLASYONU: {h_name} vs {a_name}", fg=typer.colors.BRIGHT_GREEN, bold=True)
+    typer.echo(f"  Simülasyon Tekrarı: {n_sims:,} maç | Veritabanı: {db_path} | Tohum (Seed): {seed}")
+    if referee:
+        typer.echo(f"  Hakem: {referee}")
+    if closing_odds:
+        typer.echo(f"  Piyasa Kapanış Oranları: 1={closing_odds['1']:.2f} | X={closing_odds['X']:.2f} | 2={closing_odds['2']:.2f}")
+    typer.secho("=" * 80, fg=typer.colors.CYAN)
+
+    service = MatchPredictionService(db_path=db_path)
+    res = service.analyze_match(
+        home_team_id=h_id,
+        away_team_id=a_id,
+        closing_odds=closing_odds,
+        n_monte_carlo=n_sims,
+        referee_name=referee,
+        seed=seed,
+    )
+
+    mc = res.monte_carlo
+
+    # 1. Probabilities comparison
+    typer.secho("\n📊 SONUÇ OLASILIKLARI (1X2 KARŞILAŞTIRMASI)", fg=typer.colors.YELLOW, bold=True)
+    typer.echo(f"  Model B (Dixon-Coles) : 1: %{res.p_football_1x2[0]*100:4.1f} | X: %{res.p_football_1x2[1]*100:4.1f} | 2: %{res.p_football_1x2[2]*100:4.1f}")
+    if res.p_market_1x2:
+        typer.echo(f"  Model A (Shin Piyasa) : 1: %{res.p_market_1x2[0]*100:4.1f} | X: %{res.p_market_1x2[1]*100:4.1f} | 2: %{res.p_market_1x2[2]*100:4.1f}")
+    if res.p_hybrid_1x2:
+        typer.echo(f"  Model C (Hibrit Harman): 1: %{res.p_hybrid_1x2[0]*100:4.1f} | X: %{res.p_hybrid_1x2[1]*100:4.1f} | 2: %{res.p_hybrid_1x2[2]*100:4.1f}")
+    typer.secho(f"  MatchEngine Simülasyon: 1: %{mc.p_home*100:4.1f} | X: %{mc.p_draw*100:4.1f} | 2: %{mc.p_away*100:4.1f}", fg=typer.colors.GREEN, bold=True)
+
+    if res.ev_outcomes:
+        typer.secho("\n💰 EKONOMİK BEKLENEN DEĞER (EV = p * Oran - 1)", fg=typer.colors.YELLOW, bold=True)
+        ev1 = res.ev_outcomes.get("1", 0.0)
+        evx = res.ev_outcomes.get("X", 0.0)
+        ev2 = res.ev_outcomes.get("2", 0.0)
+        c1 = typer.colors.GREEN if ev1 > 0 else typer.colors.RED
+        cx = typer.colors.GREEN if evx > 0 else typer.colors.RED
+        c2 = typer.colors.GREEN if ev2 > 0 else typer.colors.RED
+        typer.echo(f"  Ev Sahibi (1) EV : ", nl=False)
+        typer.secho(f"{ev1:+.1%}", fg=c1, bold=(ev1 > 0))
+        typer.echo(f"  Beraberlik (X) EV: ", nl=False)
+        typer.secho(f"{evx:+.1%}", fg=cx, bold=(evx > 0))
+        typer.echo(f"  Deplasman (2) EV : ", nl=False)
+        typer.secho(f"{ev2:+.1%}", fg=c2, bold=(ev2 > 0))
+
+    # 2. Monte Carlo Metrics
+    typer.secho(f"\n🎯 MONTE CARLO ÇOKLU SENARYO ÇIKTILARI ({mc.n_simulations:,} Simülasyon)", fg=typer.colors.YELLOW, bold=True)
+    typer.echo(f"  Beklenen Gol (xG)      : {h_name}: {mc.mean_xg_h:.2f} | {a_name}: {mc.mean_xg_a:.2f} (Toplam: {mc.mean_xg_h+mc.mean_xg_a:.2f})")
+    typer.echo(f"  Gerçekleşen Ort. Gol   : {h_name}: {mc.mean_goals_h:.2f} | {a_name}: {mc.mean_goals_a:.2f} (Toplam: {mc.mean_goals_h+mc.mean_goals_a:.2f})")
+    typer.echo(f"  Alt / Üst Olasılıkları : Üst 1.5: %{mc.p_over_15*100:.1f} | Üst 2.5: %{mc.p_over_25*100:.1f} | Üst 3.5: %{mc.p_over_35*100:.1f}")
+    typer.echo(f"  Karşılıklı Gol (KG)    : KG Var: %{mc.p_btts_yes*100:.1f} | KG Yok: %{mc.p_btts_no*100:.1f}")
+    typer.echo(f"  Beklenen Toplam Korner : {mc.mean_corners_tot:.1f}")
+    typer.echo(f"  Beklenen Toplam Kart   : {mc.mean_cards_tot:.1f}")
+    typer.echo(f"  Geriye Düşenin Puan Kurtarma Oranı (Comeback): %{mc.comeback_pct:.1f}")
+
+    # 3. Top Scores
+    typer.secho("\n🏆 EN OLASI 5 SKOR SENARYOSU", fg=typer.colors.YELLOW, bold=True)
+    for i, s in enumerate(mc.top_scores[:5], 1):
+        sc_label = s.get("score", f"{s['home_goals']}-{s['away_goals']}")
+        typer.echo(f"  {i}. {sc_label:5s} -> %{s['probability']*100:.1f}")
+
+    # 4. Goal Timing Distribution
+    typer.secho("\n⏱️ GOL ZAMAN DAĞILIMI (Periyot Bazlı Yoğunluk)", fg=typer.colors.YELLOW, bold=True)
+    bins = ["0-15", "15-30", "30-45", "45-60", "60-75", "75-90+"]
+    h_percs = " | ".join(f"{b}: %{mc.goal_timing_h.get(b, 0.0)*100:4.1f}" for b in bins)
+    a_percs = " | ".join(f"{b}: %{mc.goal_timing_a.get(b, 0.0)*100:4.1f}" for b in bins)
+    typer.echo(f"  {h_name:15s}: {h_percs}")
+    typer.echo(f"  {a_name:15s}: {a_percs}")
+
+    # 5. Timeline sample match
+    if timeline and mc.sample_match_timeline:
+        st = mc.sample_match_timeline
+        typer.secho(f"\n📋 ÖRNEK SİMÜLE EDİLEN MAÇ AKIŞI (Nihai Skor: {st.score_h} - {st.score_a}, İY: {st.ht_score_h} - {st.ht_score_a})", fg=typer.colors.MAGENTA, bold=True)
+        key_events = [e for e in st.events if e.event_type in (
+            EventType.GOAL, EventType.YELLOW_CARD, EventType.RED_CARD, 
+            EventType.SUBSTITUTION, EventType.HALF_TIME, EventType.FULL_TIME
+        )]
+        for ev in key_events:
+            prefix = "⚽" if ev.event_type == EventType.GOAL else (
+                "🟨" if ev.event_type == EventType.YELLOW_CARD else (
+                    "🟥" if ev.event_type == EventType.RED_CARD else (
+                        "🔄" if ev.event_type == EventType.SUBSTITUTION else "⏱️"
+                    )
+                )
+            )
+            score_str = f"[{ev.score_home_after} - {ev.score_away_after}]"
+            typer.echo(f"  {prefix} {ev.minute:02d}' {score_str:7s} {ev.description}")
+
+    # 6. Output report
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(res.markdown_report, encoding="utf-8")
+        typer.secho(f"\n✅ Detaylı simülasyon raporu kaydedildi: {out_p}", fg=typer.colors.GREEN)
+
+    typer.echo("")
 
 
 if __name__ == "__main__":

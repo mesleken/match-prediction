@@ -53,7 +53,7 @@ DB_PATH = "data/warehouse.duckdb"
 
 @st.cache_data(ttl=3600)
 def load_db_metadata():
-    con = duckdb.connect(DB_PATH)
+    con = duckdb.connect(DB_PATH, read_only=True)
     teams_df = con.execute("SELECT team_id, name FROM teams ORDER BY name").fetchdf()
     matches_df = con.execute(
         """
@@ -899,7 +899,7 @@ with tabs[1]:
     with p_subtabs[4]:
         sel_team_stat = st.selectbox("İstatistiklerini İncelemek İstediğiniz Takım:", team_names, index=team_names.index(home_team) if home_team in team_names else 0)
         sel_tid = int(teams_df[teams_df["name"] == sel_team_stat].iloc[0]["team_id"])
-        con = duckdb.connect(DB_PATH)
+        con = duckdb.connect(DB_PATH, read_only=True)
         try:
             df_team_stats = con.execute("""
                 SELECT
@@ -1200,7 +1200,7 @@ with tabs[5]:
     else:
         st.error(f"❌ **GÜVENLİK DURUMU: İHLAL EDİLDİ!** — {audit.get('error')}")
 
-    con = duckdb.connect(DB_PATH)
+    con = duckdb.connect(DB_PATH, read_only=True)
     log_df = con.execute(
         "SELECT pred_id, match_id, predicted_at, lam_home, lam_away, rho, prev_hash, row_hash "
         "FROM prediction_log ORDER BY pred_id DESC LIMIT 50"

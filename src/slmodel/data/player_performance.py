@@ -59,7 +59,10 @@ def generate_and_sync_player_match_stats(
         team_rosters[int(tid)] = group.to_dict(orient="records")
 
     match_stats_rows: list[dict[str, Any]] = []
-    stat_id_counter = 0
+    con_check = duckdb.connect(db_path, read_only=True)
+    max_id = con_check.execute("SELECT COALESCE(MAX(stat_id), 0) FROM player_match_stats").fetchone()[0]
+    con_check.close()
+    stat_id_counter = int(max_id)
 
     for _, m in matches_df.iterrows():
         mid = int(m["match_id"])
@@ -167,28 +170,36 @@ def _simulate_team_match_events(
     if not roster:
         return []
 
-    # Select 11 starters: prefer is_starter=True, else highest overall_rating
-    starters = [p for p in roster if p.get("is_starter")]
-    bench = [p for p in roster if not p.get("is_starter")]
+    # Select 11 starters: prefer is_starter=True, with realistic match rotation/absences
+    base_starters = [p for p in roster if p.get("is_starter")]
+    available_bench = [p for p in roster if not p.get("is_starter")]
 
-    if len(starters) < 11:
-        needed = 11 - len(starters)
-        starters.extend(bench[:needed])
-        bench = bench[needed:]
+    active_starters: list[dict[str, Any]] = []
+    absent_starters: list[dict[str, Any]] = []
+    for p in base_starters:
+        is_gk = p.get("position") == "GK"
+        absence_prob = 0.03 if is_gk else 0.10
+        if rng.uniform(0.0, 1.0) < absence_prob and available_bench:
+            absent_starters.append(p)
+        else:
+            active_starters.append(p)
+
+    while len(active_starters) < 11 and available_bench:
+        active_starters.append(available_bench.pop(0))
 
     # Ensure 1 GK
-    gks = [p for p in starters if p["position"] == "GK"]
+    gks = [p for p in active_starters if p["position"] == "GK"]
     if not gks:
-        bench_gks = [p for p in bench if p["position"] == "GK"]
+        bench_gks = [p for p in available_bench if p["position"] == "GK"]
         if bench_gks:
-            starters[0] = bench_gks[0]
-            bench.remove(bench_gks[0])
+            active_starters[0] = bench_gks[0]
+            available_bench.remove(bench_gks[0])
 
-    active_starters = starters[:11]
+    active_starters = active_starters[:11]
 
     # Select 3 to 4 substitutes who get playing time (10-30 mins)
-    n_subs = min(len(bench), rng.randint(3, 5))
-    active_subs = list(rng.choice(bench, size=n_subs, replace=False)) if n_subs > 0 else []
+    n_subs = min(len(available_bench), rng.randint(3, 5))
+    active_subs = list(rng.choice(available_bench, size=n_subs, replace=False)) if n_subs > 0 else []
 
     playing_players: list[dict[str, Any]] = []
 

@@ -1,0 +1,9 @@
+{
+  "status": "DATA_COLLECTION_IN_PROGRESS",
+  "decision": "KEEP_DISABLED_BY_DEFAULT",
+  "min_required_matches": 300,
+  "current_prospective_matches": 0,
+  "total_availability_snapshots": 24794,
+  "gate_passed": false,
+  "evaluated_at": "2026-10-26T13:12:29.427630+00:00"
+}

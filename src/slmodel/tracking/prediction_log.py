@@ -64,10 +64,16 @@ class PredictionLogger:
         config_hash: str = "default",
         data_hash: str = "default",
         git_commit: str = "clean",
+        avail_shift_h: float = 0.0,
+        avail_shift_a: float = 0.0,
+        lineup_known: bool = False,
     ) -> dict[str, Any]:
         """Append a new prediction to the tamper-proof ledger."""
         con = duckdb.connect(self.db_path)
         try:
+            cols = {c[1] for c in con.execute("PRAGMA table_info('prediction_log')").fetchall()}
+            has_avail = "avail_shift_h" in cols
+
             prev_hash, last_id = self.get_latest_hash_and_id(con)
             new_pred_id = last_id + 1
 
@@ -87,33 +93,66 @@ class PredictionLogger:
 
             score_matrix_json = json.dumps(score_matrix_arr.tolist())
 
-            con.execute(
-                """
-                INSERT INTO prediction_log (
-                    pred_id, match_id, predicted_at, as_of,
-                    config_hash, data_hash, git_commit, model_version,
-                    lam_home, lam_away, rho, score_matrix_json,
-                    odds_snapshot_id, prev_hash, row_hash
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                [
-                    new_pred_id,
-                    match_id,
-                    now_utc_norm,
-                    as_of_norm,
-                    config_hash,
-                    data_hash,
-                    git_commit,
-                    model_version,
-                    float(lam_home),
-                    float(lam_away),
-                    float(rho),
-                    score_matrix_json,
-                    odds_snapshot_id,
-                    prev_hash,
-                    row_hash,
-                ],
-            )
+            if has_avail:
+                con.execute(
+                    """
+                    INSERT INTO prediction_log (
+                        pred_id, match_id, predicted_at, as_of,
+                        config_hash, data_hash, git_commit, model_version,
+                        lam_home, lam_away, rho, score_matrix_json,
+                        odds_snapshot_id, prev_hash, row_hash,
+                        avail_shift_h, avail_shift_a, lineup_known
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        new_pred_id,
+                        match_id,
+                        now_utc_norm,
+                        as_of_norm,
+                        config_hash,
+                        data_hash,
+                        git_commit,
+                        model_version,
+                        float(lam_home),
+                        float(lam_away),
+                        float(rho),
+                        score_matrix_json,
+                        odds_snapshot_id,
+                        prev_hash,
+                        row_hash,
+                        float(avail_shift_h),
+                        float(avail_shift_a),
+                        bool(lineup_known),
+                    ],
+                )
+            else:
+                con.execute(
+                    """
+                    INSERT INTO prediction_log (
+                        pred_id, match_id, predicted_at, as_of,
+                        config_hash, data_hash, git_commit, model_version,
+                        lam_home, lam_away, rho, score_matrix_json,
+                        odds_snapshot_id, prev_hash, row_hash
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        new_pred_id,
+                        match_id,
+                        now_utc_norm,
+                        as_of_norm,
+                        config_hash,
+                        data_hash,
+                        git_commit,
+                        model_version,
+                        float(lam_home),
+                        float(lam_away),
+                        float(rho),
+                        score_matrix_json,
+                        odds_snapshot_id,
+                        prev_hash,
+                        row_hash,
+                    ],
+                )
 
             return {
                 "pred_id": new_pred_id,

@@ -32,7 +32,7 @@ class PlayerRatingEngine:
 
     def load_metadata(self) -> None:
         """Load player rosters and synergy pairs from DuckDB."""
-        con = duckdb.connect(self.db_path)
+        con = duckdb.connect(self.db_path, read_only=True)
         try:
             # Check if players table exists
             tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]

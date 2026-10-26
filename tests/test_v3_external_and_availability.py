@@ -19,7 +19,7 @@ def ensure_external_test_data():
     from slmodel.ingest.external_fixtures import ExternalFixturesClient
     from slmodel.ingest.weather import WeatherIngestClient
 
-    con = duckdb.connect("data/warehouse.duckdb")
+    con = duckdb.connect("data/warehouse.duckdb", read_only=True)
     n_weather = con.execute("SELECT COUNT(*) FROM match_weather").fetchone()[0]
     n_ext = con.execute("SELECT COUNT(*) FROM external_fixtures").fetchone()[0]
     n_ref = con.execute("SELECT COUNT(*) FROM matches WHERE season = '2627' AND referee IS NOT NULL").fetchone()[0]
@@ -157,7 +157,7 @@ def test_paired_bootstrap_test():
 def test_ablation_runner():
     """Verify AblationRunner evaluates leave-one-out factor impact and decisions."""
     runner = AblationRunner()
-    res = runner.run_study(factors_to_test=["referee", "weather"])
+    res = runner.run_study(factors_to_test=["referee", "weather"], seasons=["2627"])
 
     assert "baseline_rps" in res
     assert len(res["factor_reports"]) == 2
