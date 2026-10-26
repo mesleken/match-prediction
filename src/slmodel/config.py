@@ -17,7 +17,8 @@ class DixonColesConfig:
     squad_prior_weight: float = 0.18
     early_season_prior_weight: float = 0.15
     form_momentum_weight: float = 0.08
-    superiority_calibration_scale: float = 1.11
+    xg_form_weight: float = 0.0
+    superiority_calibration_scale: float = 1.00
     fixed_rho: Optional[float] = None
     base_draw_inflation: float = 0.0
     closeness_draw_threshold: float = 0.0
@@ -45,7 +46,7 @@ class MarketBlendConfig:
 
 @dataclass
 class RefereeConfig:
-    enabled: bool = True
+    enabled: bool = False
     shrinkage_k: float = 6.0
     tempo_to_lambda_coef: float = 0.04
     whistle_to_tempo_slope: float = 0.035
@@ -54,9 +55,9 @@ class RefereeConfig:
 @dataclass
 class ExternalFactorsConfig:
     weather_enabled: bool = False
-    euro_fatigue_enabled: bool = True
-    venue_edge_enabled: bool = True
-    availability_enabled: bool = True
+    euro_fatigue_enabled: bool = False
+    venue_edge_enabled: bool = False
+    availability_enabled: bool = False
 
 
 @dataclass
@@ -65,6 +66,14 @@ class AvailabilityConfig:
     max_team_lambda_shift: float = 0.20
     doubtful_p_play: float = 0.50
     prior_weight_minutes: float = 0.85
+
+
+@dataclass
+class CalibrationConfig:
+    temperature_enabled: bool = True
+    default_temperature: float = 0.75
+    temperature_floor: float = 0.60
+    temperature_ceil: float = 1.05
 
 
 @dataclass
@@ -84,6 +93,7 @@ class ModelConfig:
     referee: RefereeConfig = field(default_factory=RefereeConfig)
     external_factors: ExternalFactorsConfig = field(default_factory=ExternalFactorsConfig)
     availability: AvailabilityConfig = field(default_factory=AvailabilityConfig)
+    calibration: CalibrationConfig = field(default_factory=CalibrationConfig)
     backtest: BacktestConfig = field(default_factory=BacktestConfig)
     raw_dict: dict[str, Any] = field(default_factory=dict)
 
@@ -116,6 +126,7 @@ def load_model_config(config_path: str = "config/model.yaml") -> ModelConfig:
     rf_cfg = RefereeConfig(**data.get("referee", {}))
     ef_cfg = ExternalFactorsConfig(**data.get("external_factors", {}))
     av_cfg = AvailabilityConfig(**data.get("availability", {}))
+    cal_cfg = CalibrationConfig(**data.get("calibration", {}))
     bt_cfg = BacktestConfig(**data.get("backtest", {}))
 
     _GLOBAL_CONFIG = ModelConfig(
@@ -125,6 +136,7 @@ def load_model_config(config_path: str = "config/model.yaml") -> ModelConfig:
         referee=rf_cfg,
         external_factors=ef_cfg,
         availability=av_cfg,
+        calibration=cal_cfg,
         backtest=bt_cfg,
         raw_dict=data,
     )

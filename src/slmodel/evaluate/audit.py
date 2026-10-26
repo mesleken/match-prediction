@@ -177,7 +177,8 @@ class SeasonSimulationAuditor:
             if "team_squad_priors" not in kwargs and self.squad_priors:
                 kwargs["team_squad_priors"] = self.squad_priors
 
-        model = DixonColesModel(**kwargs)
+        from slmodel.models.dixon_coles import create_dixon_coles_model
+        model = create_dixon_coles_model(self.cfg, **kwargs)
 
         match_records: list[dict[str, Any]] = []
         last_fit_idx = -9999

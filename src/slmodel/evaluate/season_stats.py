@@ -35,7 +35,7 @@ def compute_season_statistics(
     Compute comprehensive team standings, xG/xGA/xGD/xPts metrics, shot/corner/card averages,
     and league-wide aggregates for a given Süper Lig season (defaults to '2627' = 2026/27).
     """
-    con = duckdb.connect(db_path)
+    con = duckdb.connect(db_path, read_only=True)
     try:
         q = """
             SELECT

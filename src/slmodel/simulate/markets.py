@@ -15,6 +15,21 @@ def one_x_two(M: np.ndarray) -> np.ndarray:
     return np.array([p_home, p_draw, p_away], dtype=np.float64)
 
 
+def calibrate_probabilities(
+    probs: np.ndarray,
+    temperature: float = 0.75,
+) -> np.ndarray:
+    """
+    Apply temperature scaling to 1X2 probabilities to correct heavy favorite underconfidence.
+    T < 1.0 sharpens logits and resolves the empirical residual (e = +0.077) observed on Süper Lig favorites.
+    """
+    if np.isclose(temperature, 1.0):
+        return probs
+    logits = np.log(np.clip(probs, 1e-12, 1.0)) / temperature
+    exp_l = np.exp(logits - np.max(logits))
+    return exp_l / np.sum(exp_l)
+
+
 def draw_no_bet(M: np.ndarray) -> dict[str, float]:
     """Draw No Bet (DNB) probabilities (draw excluded)."""
     p1, px, p2 = one_x_two(M)

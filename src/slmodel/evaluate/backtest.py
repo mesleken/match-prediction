@@ -148,25 +148,15 @@ class WalkForwardBacktest:
 
         eval_records = []
         sq_priors = compute_squad_priors(db_path=self.db_path) if self.cfg.dixon_coles.squad_prior_weight > 0 else {}
-        dc_kwargs = {
-            "half_life_years": self.half_life_years,
-            "season_carryover": self.cfg.dixon_coles.season_carryover,
-            "in_season_boost": self.cfg.dixon_coles.in_season_boost,
-            "shot_alpha": self.cfg.dixon_coles.shot_alpha,
-            "ridge_att": self.cfg.dixon_coles.ridge_att,
-            "ridge_def": self.cfg.dixon_coles.ridge_def,
-            "squad_prior_weight": self.cfg.dixon_coles.squad_prior_weight,
-            "early_season_prior_weight": self.cfg.dixon_coles.early_season_prior_weight,
-            "form_momentum_weight": self.cfg.dixon_coles.form_momentum_weight,
-            "superiority_calibration_scale": self.cfg.dixon_coles.superiority_calibration_scale,
-            "base_draw_inflation": self.cfg.dixon_coles.base_draw_inflation,
-            "closeness_draw_threshold": self.cfg.dixon_coles.closeness_draw_threshold,
-            "closeness_draw_boost": self.cfg.dixon_coles.closeness_draw_boost,
-            "fixed_rho": self.cfg.dixon_coles.fixed_rho,
-            "team_squad_priors": sq_priors,
-        }
-        dc_kwargs.update(self.model_kwargs)
-        model = DixonColesModel(**dc_kwargs)
+        from slmodel.models.dixon_coles import create_dixon_coles_model
+        
+        # In baseline backtest, squad priors are strictly limited to the current season (2627)
+        # to prevent lookahead data leakage into historical seasons (2122-2526).
+        model = create_dixon_coles_model(
+            self.cfg,
+            team_squad_priors={},
+            **self.model_kwargs,
+        )
         context_extractor = ContextFeatureExtractor(db_path=self.db_path) if self.use_context else None
         last_fit_idx = -999
 
@@ -180,6 +170,16 @@ class WalkForwardBacktest:
                 continue
             if to_season and target_season > to_season:
                 continue
+
+            # Dynamically activate 2026/27 squad priors ONLY when reaching the 2627 season
+            if target_season == "2627" and sq_priors:
+                model.team_squad_priors = sq_priors
+                model.squad_prior_weight = self.cfg.dixon_coles.squad_prior_weight
+                model.early_season_prior_weight = self.cfg.dixon_coles.early_season_prior_weight
+            else:
+                model.team_squad_priors = {}
+                model.squad_prior_weight = 0.0
+                model.early_season_prior_weight = 0.0
 
             if i - last_fit_idx >= self.refit_interval:
                 training_set = matches_df.iloc[:i]
@@ -412,25 +412,30 @@ class AblationRunner:
                 neutralizers[factor] = lambda c: dict(c)
 
         sq_priors = compute_squad_priors(db_path=self.db_path) if self.cfg.dixon_coles.squad_prior_weight > 0 else {}
-        dc_kwargs = {
-            "half_life_years": self.cfg.dixon_coles.half_life_years,
-            "season_carryover": self.cfg.dixon_coles.season_carryover,
-            "in_season_boost": self.cfg.dixon_coles.in_season_boost,
-            "shot_alpha": self.cfg.dixon_coles.shot_alpha,
-            "ridge_att": self.cfg.dixon_coles.ridge_att,
-            "ridge_def": self.cfg.dixon_coles.ridge_def,
-            "squad_prior_weight": self.cfg.dixon_coles.squad_prior_weight,
-            "early_season_prior_weight": self.cfg.dixon_coles.early_season_prior_weight,
-            "form_momentum_weight": self.cfg.dixon_coles.form_momentum_weight,
-            "superiority_calibration_scale": self.cfg.dixon_coles.superiority_calibration_scale,
-            "base_draw_inflation": self.cfg.dixon_coles.base_draw_inflation,
-            "closeness_draw_threshold": self.cfg.dixon_coles.closeness_draw_threshold,
-            "closeness_draw_boost": self.cfg.dixon_coles.closeness_draw_boost,
-            "fixed_rho": self.cfg.dixon_coles.fixed_rho,
-            "team_squad_priors": sq_priors,
-        }
-        model = DixonColesModel(**dc_kwargs)
-        context_extractor = ContextFeatureExtractor(db_path=self.db_path)
+        from slmodel.models.dixon_coles import create_dixon_coles_model
+        from slmodel.config import ModelConfig, ExternalFactorsConfig, RefereeConfig
+        
+        # Ablation baseline model has candidate factors active so that leave-one-out (LOO)
+        # can empirically evaluate the marginal delta when each factor is neutralized.
+        ablation_cfg = ModelConfig(
+            external_factors=ExternalFactorsConfig(
+                weather_enabled=True,
+                euro_fatigue_enabled=True,
+                venue_edge_enabled=True,
+                availability_enabled=True,
+            ),
+            referee=RefereeConfig(enabled=True),
+        )
+        model = create_dixon_coles_model(
+            self.cfg,
+            venue_edge_enabled=True,
+            weather_enabled=True,
+            euro_fatigue_enabled=True,
+            referee_enabled=True,
+            availability_enabled=True,
+            team_squad_priors={},
+        )
+        context_extractor = ContextFeatureExtractor(db_path=self.db_path, cfg=ablation_cfg)
         last_fit_idx = -999
 
         base_rps_list: list[float] = []

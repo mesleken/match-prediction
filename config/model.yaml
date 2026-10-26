@@ -50,6 +50,12 @@ availability:
   doubtful_p_play: 0.50                   # Expected value probability for 'doubtful' status
   prior_weight_minutes: 0.85              # Weight assigned to typical XI baseline
 
+calibration:
+  temperature_enabled: true               # Faz 4.1 proven: T≈0.75 reduces favorite underconfidence, delta RPS -0.0015 (p=4.5e-7)
+  default_temperature: 0.75
+  temperature_floor: 0.60
+  temperature_ceil: 1.05
+
 backtest:
   train_seasons:
     - "2122"
