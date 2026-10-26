@@ -167,6 +167,7 @@ class SeasonSimulationAuditor:
                 "early_season_prior_weight": self.cfg.dixon_coles.early_season_prior_weight,
                 "form_momentum_weight": self.cfg.dixon_coles.form_momentum_weight,
                 "low_tempo_damping_weight": getattr(self.cfg.dixon_coles, "low_tempo_damping_weight", 0.0),
+                "xg_form_weight": getattr(self.cfg.dixon_coles, "xg_form_weight", 0.0),
                 "superiority_calibration_scale": self.cfg.dixon_coles.superiority_calibration_scale,
                 "base_draw_inflation": self.cfg.dixon_coles.base_draw_inflation,
                 "closeness_draw_threshold": self.cfg.dixon_coles.closeness_draw_threshold,

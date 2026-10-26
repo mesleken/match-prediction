@@ -10,15 +10,15 @@ import yaml
 class DixonColesConfig:
     half_life_years: float = 1.25
     season_carryover: float = 0.85
-    in_season_boost: float = 1.50
+    in_season_boost: float = 2.75
     shot_alpha: float = 0.40
     ridge_att: float = 1.50
     ridge_def: float = 1.50
     squad_prior_weight: float = 0.18
-    early_season_prior_weight: float = 0.15
-    form_momentum_weight: float = 0.08
+    early_season_prior_weight: float = 0.20
+    form_momentum_weight: float = 0.12
     low_tempo_damping_weight: float = 0.09
-    xg_form_weight: float = 0.0
+    xg_form_weight: float = 0.12
     superiority_calibration_scale: float = 1.00
     fixed_rho: Optional[float] = None
     base_draw_inflation: float = 0.0

@@ -26,8 +26,8 @@ def compute_squad_priors(db_path: str = "data/warehouse.duckdb") -> dict[int, tu
             return {}
         p_df = con.execute("""
             SELECT p.team_id, 
-                   AVG(CASE WHEN p.is_starter THEN p.market_value_eur ELSE p.market_value_eur END) as squad_val,
-                   AVG(CASE WHEN p.is_starter THEN p.overall_rating ELSE p.overall_rating END) as starter_ovr,
+                   0.75 * COALESCE(AVG(CASE WHEN p.is_starter THEN p.market_value_eur ELSE NULL END), AVG(p.market_value_eur)) + 0.25 * AVG(p.market_value_eur) as squad_val,
+                   0.75 * COALESCE(AVG(CASE WHEN p.is_starter THEN p.overall_rating ELSE NULL END), AVG(p.overall_rating)) + 0.25 * AVG(p.overall_rating) as starter_ovr,
                    AVG(CASE WHEN p.is_starter AND p.position IN ('FW', 'AM', 'RW', 'LW', 'ST', 'CF') THEN p.att_rating ELSE NULL END) as starter_att,
                    AVG(CASE WHEN p.is_starter AND p.position IN ('CB', 'LB', 'RB', 'GK', 'DM') THEN p.def_rating ELSE NULL END) as starter_def
             FROM players p

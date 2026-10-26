@@ -270,6 +270,18 @@ OFFLINE_REFEREE_CATALOG: list[dict[str, Any]] = [
         "red_card_mult": 1.00,
         "home_card_bias": 0.03,
     },
+    {
+        "referee_id": 19450,
+        "name": "Melek Dakan",
+        "matches_officiated": 12,
+        "avg_fouls": 23.0,
+        "avg_yellow": 3.80,
+        "avg_red": 0.15,
+        "whistle_tempo_index": -0.57,
+        "card_strictness_mult": 0.84,
+        "red_card_mult": 0.60,
+        "home_card_bias": 0.02,
+    },
 ]
 
 

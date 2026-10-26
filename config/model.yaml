@@ -4,14 +4,15 @@
 dixon_coles:
   half_life_years: 1.25
   season_carryover: 0.85
-  in_season_boost: 1.50
+  in_season_boost: 2.75
   shot_alpha: 0.40
   ridge_att: 1.50
   ridge_def: 1.50
   squad_prior_weight: 0.18
-  early_season_prior_weight: 0.15
-  form_momentum_weight: 0.08
+  early_season_prior_weight: 0.20
+  form_momentum_weight: 0.12
   low_tempo_damping_weight: 0.09          # Symmetric pace damping for sterile/low-tempo team matchups
+  xg_form_weight: 0.12                    # Opponent-adjusted xG form momentum weight
   superiority_calibration_scale: 1.00     # Removed in-sample post-hoc multiplier; pure model unperturbed
   fixed_rho: null                         # Null fits rho directly from data via MLE (empirically -0.095)
   base_draw_inflation: 0.0                # Structural baseline (0.0 means unperturbed MLE)
