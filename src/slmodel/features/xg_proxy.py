@@ -116,6 +116,7 @@ def compute_opponent_adjusted_xg_form(
     """
     Compute recent opponent-adjusted attacking and defensive xG form momentum.
     Strictly uses prior matches with status='played'.
+    Normalizes team xG output by the opponent's historical defensive vulnerability.
     """
     tm = prior_matches[
         (prior_matches["home_team_id"] == team_id) | (prior_matches["away_team_id"] == team_id)
@@ -130,17 +131,55 @@ def compute_opponent_adjusted_xg_form(
     rec_matches = tm.tail(window_recent)
     long_matches = tm.tail(window_long)
 
+    # Pre-calculate each opponent's baseline defense and attack quality from prior matches
+    # Bounded in [0.65, 1.65] relative to Süper Lig average goal baseline (1.35)
+    opp_cache: dict[int, tuple[float, float]] = {}
+
+    def _get_opp_factors(opp_id: int) -> tuple[float, float]:
+        if opp_id in opp_cache:
+            return opp_cache[opp_id]
+        om = prior_matches[(prior_matches["home_team_id"] == opp_id) | (prior_matches["away_team_id"] == opp_id)].tail(window_long)
+        if len(om) < 4:
+            res = (1.0, 1.0)
+            opp_cache[opp_id] = res
+            return res
+        conceded = 0.0
+        scored = 0.0
+        for _, row in om.iterrows():
+            if row["home_team_id"] == opp_id:
+                scored += float(row.get("home_goals", 1.35))
+                conceded += float(row.get("away_goals", 1.35))
+            else:
+                scored += float(row.get("away_goals", 1.35))
+                conceded += float(row.get("home_goals", 1.35))
+        n_om = len(om)
+        avg_conceded = conceded / n_om
+        avg_scored = scored / n_om
+        def_factor = float(np.clip(avg_conceded / 1.35, 0.65, 1.65))
+        att_factor = float(np.clip(avg_scored / 1.35, 0.65, 1.65))
+        res = (def_factor, att_factor)
+        opp_cache[opp_id] = res
+        return res
+
     def _extract_xg_series(df: pd.DataFrame) -> tuple[list[float], list[float]]:
         f_list: list[float] = []
         a_list: list[float] = []
         for _, r in df.iterrows():
             hxg, axg = compute_match_proxy_xg(r, betas)
-            if r["home_team_id"] == team_id:
-                f_list.append(hxg)
-                a_list.append(axg)
-            else:
-                f_list.append(axg)
-                a_list.append(hxg)
+            is_home = (r["home_team_id"] == team_id)
+            opp_id = int(r["away_team_id"] if is_home else r["home_team_id"])
+            opp_def, opp_att = _get_opp_factors(opp_id)
+
+            raw_f = hxg if is_home else axg
+            raw_a = axg if is_home else hxg
+
+            # Opponent-adjusted: xG scored divided by opponent defense strength (solid def -> def_factor < 1.0 -> boost)
+            adj_f = raw_f / opp_def
+            # Opponent-adjusted: xG conceded divided by opponent attack threat (strong att -> att_factor > 1.0 -> lower penalty)
+            adj_a = raw_a / opp_att
+
+            f_list.append(adj_f)
+            a_list.append(adj_a)
         return f_list, a_list
 
     rf, ra = _extract_xg_series(rec_matches)

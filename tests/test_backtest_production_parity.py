@@ -36,7 +36,7 @@ def test_as_of_temporal_boundary_strictness():
     df_as_of = load_match_history(as_of=as_of)
 
     k_utc = pd.to_datetime(df_as_of["kickoff_utc"], utc=True)
-    assert (k_utc <= as_of).all()
+    assert (k_utc < as_of).all()
     assert len(df_as_of) < 2500
     assert len(df_as_of) > 1500
 
@@ -59,3 +59,20 @@ def test_prediction_service_matches_backtest_training():
         max_idx = np.argmax(res.p_football_1x2)
         if res.p_football_1x2[max_idx] >= 0.60:
             assert res.p_calibrated_1x2[max_idx] >= res.p_football_1x2[max_idx]
+
+    # Offline backtest path
+    cfg = get_model_config()
+    history = load_match_history(as_of=as_of)
+    model_bt = create_dixon_coles_model(cfg, team_squad_priors={})
+    model_bt.squad_prior_weight = 0.0
+    model_bt.early_season_prior_weight = 0.0
+    model_bt.fit(history, as_of=as_of)
+
+    from slmodel.features.context import ContextFeatureExtractor
+    ctx = ContextFeatureExtractor().extract_features_for_match(
+        home_team_id=1, away_team_id=2, kickoff_utc=as_of, matches_history=history
+    )
+    lam_bt, mu_bt, rho_bt = model_bt.predict_lambdas(1, 2, context_features=ctx)
+
+    assert res.lam_h == pytest.approx(lam_bt, abs=0.01)
+    assert res.lam_a == pytest.approx(mu_bt, abs=0.01)

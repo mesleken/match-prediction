@@ -1,38 +1,48 @@
 {
   "n_evaluated_matches": 1793,
+  "n_clusters": 194,
+  "mde_rps_alpha05_power80": 0.000559,
   "temperature": 0.75,
   "models": {
     "model_b0_baseline": {
-      "rps": 0.200772,
-      "brier": 0.588057,
-      "accuracy": 0.5354
+      "rps": 0.199752,
+      "brier": 0.585901,
+      "brier_ou25": 0.245542,
+      "brier_btts": 0.248893,
+      "accuracy": 0.536
     },
     "model_b_g1_xg_w004": {
-      "rps": 0.200381,
-      "brier": 0.587326,
+      "rps": 0.19947,
+      "brier": 0.585426,
+      "brier_ou25": 0.24611,
+      "brier_btts": 0.248952,
       "accuracy": 0.5349,
-      "delta_rps": -0.000391,
-      "delta_brier": -0.000731,
-      "ci_95_delta_rps": [
-        -0.000748,
-        1.7e-05
+      "delta_rps": -0.000282,
+      "delta_brier": -0.000475,
+      "cluster_ci_95_delta_rps": [
+        -0.000719,
+        0.000118
       ],
-      "p_paired_t": 0.05305540684896611,
-      "p_wilcoxon": 0.04004445219502396,
+      "p_raw_t": 0.15760729220945233,
+      "p_holm": 0.31521458441890465,
+      "p_wilcoxon": 0.12937138302695123,
       "superior": false
     },
     "model_b_g2_xg_w008": {
-      "rps": 0.200212,
-      "brier": 0.587081,
-      "accuracy": 0.5298,
-      "delta_rps": -0.00056,
-      "delta_brier": -0.000976,
-      "ci_95_delta_rps": [
-        -0.001374,
-        0.00023
+      "rps": 0.199409,
+      "brier": 0.585438,
+      "brier_ou25": 0.246835,
+      "brier_btts": 0.249091,
+      "accuracy": 0.5349,
+      "delta_rps": -0.000344,
+      "delta_brier": -0.000462,
+      "cluster_ci_95_delta_rps": [
+        -0.00122,
+        0.000458
       ],
-      "p_paired_t": 0.16498688535441539,
-      "p_wilcoxon": 0.10229998149331812,
+      "p_raw_t": 0.38827912977236045,
+      "p_holm": 0.38827912977236045,
+      "p_wilcoxon": 0.2697550292921381,
       "superior": false
     },
     "model_a_closing_market": {

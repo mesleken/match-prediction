@@ -1,40 +1,16 @@
 {
   "status": "COMPLETED",
   "seasons_covered": [
-    "2122",
-    "2223",
-    "2324",
-    "2425",
-    "2526",
     "2627"
   ],
-  "total_matches_with_player_stats": 1793,
-  "total_player_match_rows": 32666,
-  "total_availability_snapshots": 24794,
+  "total_matches_with_player_stats": 72,
+  "total_player_match_rows": 2095,
+  "total_availability_snapshots": 0,
   "season_breakdown": {
-    "2122": {
-      "matches_processed": 380,
-      "records_generated": 6056
-    },
-    "2223": {
-      "matches_processed": 313,
-      "records_generated": 4281
-    },
-    "2324": {
-      "matches_processed": 380,
-      "records_generated": 6062
-    },
-    "2425": {
-      "matches_processed": 342,
-      "records_generated": 6798
-    },
-    "2526": {
-      "matches_processed": 306,
-      "records_generated": 7390
-    },
     "2627": {
       "matches_processed": 72,
-      "records_generated": 2079
+      "records_generated": 2095
     }
-  }
+  },
+  "historical_seasons_note": "Historical seasons (2122-2526) require external matchday squad archives to avoid synthetic roster lookahead."
 }

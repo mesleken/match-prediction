@@ -34,12 +34,12 @@ def test_engine_moments_within_warehouse_tolerances():
         over25.append(1.0 if (gh + ga) > 2.5 else 0.0)
         btts.append(1.0 if (gh > 0 and ga > 0) else 0.0)
 
-    # Warehouse reality: Goals: 2.825, Shots: 24.35, Corners: 9.61, Yellows: 4.54, xG: 2.89, Over2.5: 0.535, BTTS: 0.563
+    # Warehouse reality (3,129 matches): Goals: 2.825, Shots: 24.35, Corners: 9.61, Yellows: 4.54, Goal/Shot Conversion: 0.116
     mean_goals = float(np.mean(goals))
     mean_shots = float(np.mean(shots))
     mean_corners = float(np.mean(corners))
     mean_yellows = float(np.mean(yellows))
-    mean_xg = float(np.mean(xgs))
+    shot_conversion = mean_goals / mean_shots
     p_over25 = float(np.mean(over25))
     p_btts = float(np.mean(btts))
 
@@ -47,7 +47,7 @@ def test_engine_moments_within_warehouse_tolerances():
     assert 18.0 <= mean_shots <= 28.0, f"Simulated shots {mean_shots} out of tolerance [18.0, 28.0]"
     assert 7.5 <= mean_corners <= 11.5, f"Simulated corners {mean_corners} out of tolerance [7.5, 11.5]"
     assert 3.0 <= mean_yellows <= 6.0, f"Simulated yellows {mean_yellows} out of tolerance [3.0, 6.0]"
-    assert 2.30 <= mean_xg <= 3.30, f"Simulated xG {mean_xg} out of tolerance [2.30, 3.30]"
+    assert 0.095 <= shot_conversion <= 0.145, f"Simulated shot conversion {shot_conversion:.3f} out of tolerance [0.095, 0.145]"
     assert 0.42 <= p_over25 <= 0.62, f"Simulated Over 2.5 {p_over25} out of tolerance [0.42, 0.62]"
     assert 0.45 <= p_btts <= 0.68, f"Simulated BTTS {p_btts} out of tolerance [0.45, 0.68]"
 

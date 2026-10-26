@@ -9,7 +9,7 @@ import pandas as pd
 import yaml
 
 from slmodel.config import get_model_config
-from slmodel.features.xg_proxy import compute_opponent_adjusted_xg_form
+from slmodel.features.xg_proxy import compute_match_proxy_xg, compute_opponent_adjusted_xg_form
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -222,15 +222,13 @@ class ContextFeatureExtractor:
             if len(tm) < 2:
                 return 0.0
 
-            has_hxg = "hxg" in tm.columns and tm["hxg"].notna().any()
             diffs: list[float] = []
             for _, r in tm.tail(5).iterrows():
+                hxg_val, axg_val = compute_match_proxy_xg(r)
                 if r["home_team_id"] == team_id:
-                    xf = r["hxg"] if has_hxg and pd.notna(r["hxg"]) else (r.get("hs", 0) * 0.1 if pd.notna(r.get("hs")) else r["home_goals"])
-                    xa = r["axg"] if has_hxg and pd.notna(r["axg"]) else (r.get("as_", 0) * 0.1 if pd.notna(r.get("as_")) else r["away_goals"])
+                    xf, xa = hxg_val, axg_val
                 else:
-                    xf = r["axg"] if has_hxg and pd.notna(r["axg"]) else (r.get("as_", 0) * 0.1 if pd.notna(r.get("as_")) else r["away_goals"])
-                    xa = r["hxg"] if has_hxg and pd.notna(r["hxg"]) else (r.get("hs", 0) * 0.1 if pd.notna(r.get("hs")) else r["home_goals"])
+                    xf, xa = axg_val, hxg_val
                 diffs.append(float(xf - xa))
 
             if not diffs:
@@ -240,12 +238,11 @@ class ContextFeatureExtractor:
 
             all_diffs: list[float] = []
             for _, r in tm.tail(30).iterrows():
+                hxg_val, axg_val = compute_match_proxy_xg(r)
                 if r["home_team_id"] == team_id:
-                    xf = r["hxg"] if has_hxg and pd.notna(r["hxg"]) else (r.get("hs", 0) * 0.1 if pd.notna(r.get("hs")) else r["home_goals"])
-                    xa = r["axg"] if has_hxg and pd.notna(r["axg"]) else (r.get("as_", 0) * 0.1 if pd.notna(r.get("as_")) else r["away_goals"])
+                    xf, xa = hxg_val, axg_val
                 else:
-                    xf = r["axg"] if has_hxg and pd.notna(r["axg"]) else (r.get("as_", 0) * 0.1 if pd.notna(r.get("as_")) else r["away_goals"])
-                    xa = r["hxg"] if has_hxg and pd.notna(r["hxg"]) else (r.get("hs", 0) * 0.1 if pd.notna(r.get("hs")) else r["home_goals"])
+                    xf, xa = axg_val, hxg_val
                 all_diffs.append(float(xf - xa))
             long_xgd = float(np.mean(all_diffs)) if all_diffs else 0.0
             return float(recent_xgd - long_xgd)
@@ -259,7 +256,6 @@ class ContextFeatureExtractor:
             if len(tm) == 0 or "home_goals" not in tm.columns or "away_goals" not in tm.columns:
                 return {"att_form": 0.0, "def_vuln": 0.0, "venue_edge": 0.0, "in_season_matches": 0.0}
 
-            has_hxg = "hxg" in tm.columns and tm["hxg"].notna().any()
             rec = tm.tail(6)
             long_tm = tm.tail(30)
 
@@ -267,16 +263,17 @@ class ContextFeatureExtractor:
                 f_vals: list[float] = []
                 a_vals: list[float] = []
                 for _, r in sub_df.iterrows():
+                    hxg_val, axg_val = compute_match_proxy_xg(r)
                     if r["home_team_id"] == team_id:
                         gf = float(r["home_goals"])
                         ga = float(r["away_goals"])
-                        xf = float(r["hxg"]) if has_hxg and pd.notna(r["hxg"]) else gf
-                        xa = float(r["axg"]) if has_hxg and pd.notna(r["axg"]) else ga
+                        xf = hxg_val
+                        xa = axg_val
                     else:
                         gf = float(r["away_goals"])
                         ga = float(r["home_goals"])
-                        xf = float(r["axg"]) if has_hxg and pd.notna(r["axg"]) else gf
-                        xa = float(r["hxg"]) if has_hxg and pd.notna(r["hxg"]) else ga
+                        xf = axg_val
+                        xa = hxg_val
                     f_vals.append(0.60 * xf + 0.40 * gf)
                     a_vals.append(0.60 * xa + 0.40 * ga)
                 return f_vals, a_vals
@@ -298,14 +295,13 @@ class ContextFeatureExtractor:
             if len(v_tm) >= 2:
                 v_diffs: list[float] = []
                 for _, r in v_tm.iterrows():
+                    hxg_val, axg_val = compute_match_proxy_xg(r)
                     if is_home_target:
                         gf, ga = float(r["home_goals"]), float(r["away_goals"])
-                        xf = float(r["hxg"]) if has_hxg and pd.notna(r["hxg"]) else gf
-                        xa = float(r["axg"]) if has_hxg and pd.notna(r["axg"]) else ga
+                        xf, xa = hxg_val, axg_val
                     else:
                         gf, ga = float(r["away_goals"]), float(r["home_goals"])
-                        xf = float(r["axg"]) if has_hxg and pd.notna(r["axg"]) else gf
-                        xa = float(r["hxg"]) if has_hxg and pd.notna(r["hxg"]) else ga
+                        xf, xa = axg_val, hxg_val
                     v_diffs.append(0.5 * (gf - ga) + 0.5 * (xf - xa))
                 venue_edge = float(np.mean(v_diffs) - (0.25 if is_home_target else -0.25))
             else:

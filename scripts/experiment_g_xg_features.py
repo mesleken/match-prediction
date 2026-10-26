@@ -1,6 +1,6 @@
 """
 Experiment G: Opponent-Adjusted Shot-Quality Proxy xG Form Features Walk-Forward Proof Gate.
-Evaluates whether adding timestamped proxy xG form momentum to calibrated Model B yields
+Evaluates whether adding timestamped opponent-adjusted proxy xG form momentum to calibrated Model B yields
 statistically significant out-of-sample predictive improvement over baseline.
 """
 
@@ -23,7 +23,7 @@ from slmodel.data.loaders import load_match_history
 from slmodel.evaluate.metrics import rps, brier_score
 from slmodel.features.context import ContextFeatureExtractor
 from slmodel.models.dixon_coles import create_dixon_coles_model, compute_squad_priors
-from slmodel.simulate.markets import one_x_two, calibrate_probabilities
+from slmodel.simulate.markets import one_x_two, calibrate_probabilities, over_under, both_teams_to_score
 from slmodel.simulate.score_matrix import score_matrix
 
 
@@ -82,10 +82,13 @@ def run_experiment_g(
         a_id = int(m["away_team_id"])
         hg = int(m["home_goals"])
         ag = int(m["away_goals"])
+        matchday_val = int(m["matchday"]) if pd.notna(m.get("matchday")) else (i % 38 + 1)
         kickoff = m["kickoff_utc"]
         ref_name = str(m["referee"]) if pd.notna(m.get("referee")) else None
         crowd_val = str(m["crowd"]) if pd.notna(m.get("crowd")) else "full"
         act_idx = 0 if hg > ag else (1 if hg == ag else 2)
+        act_ou = 1 if (hg + ag) > 2.5 else 0
+        act_btts = 1 if (hg > 0 and ag > 0) else 0
 
         if season_str == "2627" and sq_priors:
             dc_model.team_squad_priors = sq_priors
@@ -115,33 +118,46 @@ def run_experiment_g(
         lam_b0, mu_b0, rho_b0 = dc_model.predict_lambdas(h_id, a_id, crowd=crowd_val, context_features=ctx)
         M_b0 = score_matrix(lam_b0, mu_b0, rho_b0)
         p_b0 = calibrate_probabilities(one_x_two(M_b0), temperature=temperature)
+        ou_b0 = over_under(M_b0, line=2.5)
+        btts_b0 = both_teams_to_score(M_b0)
 
         # Candidate G1 (xg_form_weight = 0.04)
         dc_model.xg_form_weight = 0.04
         lam_g1, mu_g1, rho_g1 = dc_model.predict_lambdas(h_id, a_id, crowd=crowd_val, context_features=ctx)
         M_g1 = score_matrix(lam_g1, mu_g1, rho_g1)
         p_g1 = calibrate_probabilities(one_x_two(M_g1), temperature=temperature)
+        ou_g1 = over_under(M_g1, line=2.5)
+        btts_g1 = both_teams_to_score(M_g1)
 
         # Candidate G2 (xg_form_weight = 0.08)
         dc_model.xg_form_weight = 0.08
         lam_g2, mu_g2, rho_g2 = dc_model.predict_lambdas(h_id, a_id, crowd=crowd_val, context_features=ctx)
         M_g2 = score_matrix(lam_g2, mu_g2, rho_g2)
         p_g2 = calibrate_probabilities(one_x_two(M_g2), temperature=temperature)
+        ou_g2 = over_under(M_g2, line=2.5)
+        btts_g2 = both_teams_to_score(M_g2)
 
         p_mkt = odds_map.get(mid, None)
 
         rec: dict[str, Any] = {
             "match_id": mid,
             "season": season_str,
+            "matchday": matchday_val,
             "act_idx": act_idx,
             "rps_b0": rps(p_b0, act_idx),
             "brier_b0": brier_score(p_b0, act_idx),
+            "brier_ou_b0": (float(ou_b0["over"]) - act_ou) ** 2,
+            "brier_btts_b0": (float(btts_b0["yes"]) - act_btts) ** 2,
             "hit_b0": int(np.argmax(p_b0) == act_idx),
             "rps_g1": rps(p_g1, act_idx),
             "brier_g1": brier_score(p_g1, act_idx),
+            "brier_ou_g1": (float(ou_g1["over"]) - act_ou) ** 2,
+            "brier_btts_g1": (float(btts_g1["yes"]) - act_btts) ** 2,
             "hit_g1": int(np.argmax(p_g1) == act_idx),
             "rps_g2": rps(p_g2, act_idx),
             "brier_g2": brier_score(p_g2, act_idx),
+            "brier_ou_g2": (float(ou_g2["over"]) - act_ou) ** 2,
+            "brier_btts_g2": (float(btts_g2["yes"]) - act_btts) ** 2,
             "hit_g2": int(np.argmax(p_g2) == act_idx),
         }
         if p_mkt is not None:
@@ -157,11 +173,15 @@ def run_experiment_g(
     # Model B0 metrics
     mean_rps_b0 = float(res_df["rps_b0"].mean())
     mean_brier_b0 = float(res_df["brier_b0"].mean())
+    mean_ou_b0 = float(res_df["brier_ou_b0"].mean())
+    mean_btts_b0 = float(res_df["brier_btts_b0"].mean())
     acc_b0 = float(res_df["hit_b0"].mean())
 
     # Candidate G1 (w = 0.04)
     mean_rps_g1 = float(res_df["rps_g1"].mean())
     mean_brier_g1 = float(res_df["brier_g1"].mean())
+    mean_ou_g1 = float(res_df["brier_ou_g1"].mean())
+    mean_btts_g1 = float(res_df["brier_btts_g1"].mean())
     acc_g1 = float(res_df["hit_g1"].mean())
     delta_rps_g1 = mean_rps_g1 - mean_rps_b0
     delta_brier_g1 = mean_brier_g1 - mean_brier_b0
@@ -171,21 +191,43 @@ def run_experiment_g(
     # Candidate G2 (w = 0.08)
     mean_rps_g2 = float(res_df["rps_g2"].mean())
     mean_brier_g2 = float(res_df["brier_g2"].mean())
+    mean_ou_g2 = float(res_df["brier_ou_g2"].mean())
+    mean_btts_g2 = float(res_df["brier_btts_g2"].mean())
     acc_g2 = float(res_df["hit_g2"].mean())
     delta_rps_g2 = mean_rps_g2 - mean_rps_b0
     delta_brier_g2 = mean_brier_g2 - mean_brier_b0
     t_stat_g2, p_val_g2 = stats.ttest_rel(res_df["rps_g2"], res_df["rps_b0"])
     w_stat_g2, p_wilcoxon_g2 = stats.wilcoxon(res_df["rps_g2"], res_df["rps_b0"])
 
-    # Bootstrap 95% CI for Delta RPS (G1 vs B0)
-    rng = np.random.RandomState(42)
-    diffs_g1 = (res_df["rps_g1"] - res_df["rps_b0"]).values
-    boot_g1 = [float(np.mean(rng.choice(diffs_g1, size=n_eval, replace=True))) for _ in range(2000)]
-    ci_95_g1 = [float(np.percentile(boot_g1, 2.5)), float(np.percentile(boot_g1, 97.5))]
+    # Matchday Cluster Bootstrap (clustering by season_matchday)
+    res_df["cluster_id"] = res_df["season"].astype(str) + "_" + res_df["matchday"].astype(str)
+    clusters = res_df["cluster_id"].unique()
+    n_clust = len(clusters)
+    cluster_indices = [res_df[res_df["cluster_id"] == c].index.to_numpy() for c in clusters]
 
-    diffs_g2 = (res_df["rps_g2"] - res_df["rps_b0"]).values
-    boot_g2 = [float(np.mean(rng.choice(diffs_g2, size=n_eval, replace=True))) for _ in range(2000)]
+    rng = np.random.RandomState(42)
+    diffs_g1_all = (res_df["rps_g1"] - res_df["rps_b0"]).to_numpy()
+    diffs_g2_all = (res_df["rps_g2"] - res_df["rps_b0"]).to_numpy()
+
+    boot_g1 = []
+    boot_g2 = []
+    for _ in range(2000):
+        sampled_c = rng.choice(n_clust, size=n_clust, replace=True)
+        idx_sample = np.concatenate([cluster_indices[c] for c in sampled_c])
+        boot_g1.append(float(np.mean(diffs_g1_all[idx_sample])))
+        boot_g2.append(float(np.mean(diffs_g2_all[idx_sample])))
+
+    ci_95_g1 = [float(np.percentile(boot_g1, 2.5)), float(np.percentile(boot_g1, 97.5))]
     ci_95_g2 = [float(np.percentile(boot_g2, 2.5)), float(np.percentile(boot_g2, 97.5))]
+
+    # Holm-Bonferroni correction over G1 & G2
+    p_raw = sorted([p_val_g1, p_val_g2])
+    p_holm_g1 = min(1.0, float(p_val_g1 * 2 if p_val_g1 <= p_val_g2 else p_val_g1))
+    p_holm_g2 = min(1.0, float(p_val_g2 * 2 if p_val_g2 <= p_val_g1 else p_val_g2))
+
+    # MDE (Minimum Detectable Effect at alpha=0.05, power=0.80)
+    sigma_diff = float(np.std(diffs_g1_all))
+    mde_rps = float(2.802 * sigma_diff / np.sqrt(n_eval))
 
     # Market metrics
     mkt_sub = res_df.dropna(subset=["rps_mkt"])
@@ -194,43 +236,52 @@ def run_experiment_g(
     acc_mkt = float(mkt_sub["hit_mkt"].mean()) if not mkt_sub.empty else None
 
     # Decision Gate Evaluation
-    # Superior if delta_rps < 0 AND upper bound of 95% CI < 0 AND p < 0.05
-    g1_superior = bool(delta_rps_g1 < 0 and ci_95_g1[1] < 0 and p_val_g1 < 0.05)
-    g2_superior = bool(delta_rps_g2 < 0 and ci_95_g2[1] < 0 and p_val_g2 < 0.05)
+    g1_superior = bool(delta_rps_g1 < 0 and ci_95_g1[1] < 0 and p_holm_g1 < 0.05)
+    g2_superior = bool(delta_rps_g2 < 0 and ci_95_g2[1] < 0 and p_holm_g2 < 0.05)
 
     if g1_superior or g2_superior:
-        decision_status = "G-KAPISI GEÇİLDİ (Vekil xG Formu Model B'ye Üstünlük Sağladı - Üretime Alındı)"
+        decision_status = "G-KAPISI GEÇİLDİ (Rakip Düzeltmeli Vekil xG Formu Üstünlük Sağladı - Üretime Alındı)"
     else:
         decision_status = "G-KAPISI GEÇİLMEDİ (Vekil xG Formu Anlamlı Kazanç Sağlamadı - Katsayı Kapalı Tutulmalı)"
 
     out_data = {
         "n_evaluated_matches": n_eval,
+        "n_clusters": n_clust,
+        "mde_rps_alpha05_power80": round(mde_rps, 6),
         "temperature": temperature,
         "models": {
             "model_b0_baseline": {
                 "rps": round(mean_rps_b0, 6),
                 "brier": round(mean_brier_b0, 6),
+                "brier_ou25": round(mean_ou_b0, 6),
+                "brier_btts": round(mean_btts_b0, 6),
                 "accuracy": round(acc_b0, 4),
             },
             "model_b_g1_xg_w004": {
                 "rps": round(mean_rps_g1, 6),
                 "brier": round(mean_brier_g1, 6),
+                "brier_ou25": round(mean_ou_g1, 6),
+                "brier_btts": round(mean_btts_g1, 6),
                 "accuracy": round(acc_g1, 4),
                 "delta_rps": round(delta_rps_g1, 6),
                 "delta_brier": round(delta_brier_g1, 6),
-                "ci_95_delta_rps": [round(c, 6) for c in ci_95_g1],
-                "p_paired_t": float(p_val_g1),
+                "cluster_ci_95_delta_rps": [round(c, 6) for c in ci_95_g1],
+                "p_raw_t": float(p_val_g1),
+                "p_holm": float(p_holm_g1),
                 "p_wilcoxon": float(p_wilcoxon_g1),
                 "superior": g1_superior,
             },
             "model_b_g2_xg_w008": {
                 "rps": round(mean_rps_g2, 6),
                 "brier": round(mean_brier_g2, 6),
+                "brier_ou25": round(mean_ou_g2, 6),
+                "brier_btts": round(mean_btts_g2, 6),
                 "accuracy": round(acc_g2, 4),
                 "delta_rps": round(delta_rps_g2, 6),
                 "delta_brier": round(delta_brier_g2, 6),
-                "ci_95_delta_rps": [round(c, 6) for c in ci_95_g2],
-                "p_paired_t": float(p_val_g2),
+                "cluster_ci_95_delta_rps": [round(c, 6) for c in ci_95_g2],
+                "p_raw_t": float(p_val_g2),
+                "p_holm": float(p_holm_g2),
                 "p_wilcoxon": float(p_wilcoxon_g2),
                 "superior": g2_superior,
             },
@@ -250,20 +301,21 @@ def run_experiment_g(
     md = f"""# Deney G: Şut Kalitesi Vekil xG/xGA Form Özellikleri Walk-Forward Kanıt Kapısı
 
 **Tarih:** 26 Ekim 2026  
-**Değerlendirilen Maç Sayısı:** {n_eval:,} (2021/22 - 2026/27, Walk-Forward, Sızıntısız)  
+**Değerlendirilen Maç Sayısı:** {n_eval:,} ({n_clust:,} maç günü kümesi, 2021/22 - 2026/27, Walk-Forward, Sızıntısız)  
+**Asgari Saptanabilir Etki (MDE, Güç: %80, \\alpha: 0.05):** \\pm {mde_rps:.6f} RPS  
 **Kalibrasyon:** Sıcaklık Ölçeklemesi Devrede ($T = {temperature}$)  
-**Amaç:** Şut kalitesi tabanlı vekil xG/xGA form momentumunun, Model B'ye (Dixon-Coles) ek tahmin değeri sağlayıp sağlamadığını önceden belirlenmiş karar kuralıyla test etmek.
+**Amaç:** Gerçek rakip gücü düzeltmeli vekil xG/xGA form momentumunun, Model B'ye (Dixon-Coles) ek tahmin değeri sağlayıp sağlamadığını önceden belirlenmiş karar kuralıyla test etmek.
 
 ---
 
 ## 1. Sayısal Sonuçlar ve Metrik Karşılaştırması
 
-| Model / Varyant | 1X2 RPS | RPS Farkı (\\Delta) | %95 Güven Aralığı | Eşli $t$-testi ($p$) | Wilcoxon ($p$) | 1X2 İsabet |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Model B0 (Kalibre Taban)** | **{mean_rps_b0:.6f}** | — | — | — | — | %{acc_b0*100.0:.2f} |
-| **Model B+G1 ($w = 0.04$)** | {mean_rps_g1:.6f} | {delta_rps_g1:+.6f} | [{ci_95_g1[0]:+.6f}, {ci_95_g1[1]:+.6f}] | $p = {p_val_g1:.4f}$ | $p = {p_wilcoxon_g1:.4f}$ | %{acc_g1*100.0:.2f} |
-| **Model B+G2 ($w = 0.08$)** | {mean_rps_g2:.6f} | {delta_rps_g2:+.6f} | [{ci_95_g2[0]:+.6f}, {ci_95_g2[1]:+.6f}] | $p = {p_val_g2:.4f}$ | $p = {p_wilcoxon_g2:.4f}$ | %{acc_g2*100.0:.2f} |
-| **Model A (Piyasa Referansı)** | **{mean_rps_mkt:.6f}** | — | — | — | — | %{acc_mkt*100.0:.2f} |
+| Model / Varyant | 1X2 RPS | RPS Farkı (\\Delta) | Kümeli %95 Güven Aralığı | Ham $p$ | Holm $p$ | 1X2 İsabet | 2.5 Üst Brier | KG Var Brier |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Model B0 (Kalibre Taban)** | **{mean_rps_b0:.6f}** | — | — | — | — | %{acc_b0*100:.2f} | {mean_ou_b0:.6f} | {mean_btts_b0:.6f} |
+| **Model B+G1 ($w = 0.04$)** | {mean_rps_g1:.6f} | {delta_rps_g1:+.6f} | [{ci_95_g1[0]:+.6f}, {ci_95_g1[1]:+.6f}] | $p = {p_val_g1:.4f}$ | $p = {p_holm_g1:.4f}$ | %{acc_g1*100:.2f} | {mean_ou_g1:.6f} | {mean_btts_g1:.6f} |
+| **Model B+G2 ($w = 0.08$)** | {mean_rps_g2:.6f} | {delta_rps_g2:+.6f} | [{ci_95_g2[0]:+.6f}, {ci_95_g2[1]:+.6f}] | $p = {p_val_g2:.4f}$ | $p = {p_holm_g2:.4f}$ | %{acc_g2*100:.2f} | {mean_ou_g2:.6f} | {mean_btts_g2:.6f} |
+| **Model A (Piyasa Referansı)** | **{mean_rps_mkt:.6f}** | — | — | — | — | %{acc_mkt*100:.2f} | — | — |
 
 ---
 
@@ -272,18 +324,17 @@ def run_experiment_g(
 > [!IMPORTANT]
 > **Karar: {decision_status}**
 > 
-> - **G1 ($w=0.04$):** $\\Delta \\text{{RPS}} = {delta_rps_g1:+.6f}$, %95 GA: `[{ci_95_g1[0]:+.6f}, {ci_95_g1[1]:+.6f}]`
-> - **G2 ($w=0.08$):** $\\Delta \\text{{RPS}} = {delta_rps_g2:+.6f}$, %95 GA: `[{ci_95_g2[0]:+.6f}, {ci_95_g2[1]:+.6f}]`
+> - **G1 ($w=0.04$):** $\\Delta \\text{{RPS}} = {delta_rps_g1:+.6f}$, Kümeli %95 GA: `[{ci_95_g1[0]:+.6f}, {ci_95_g1[1]:+.6f}]`, $p_{{\\text{{Holm}}}} = {p_holm_g1:.4f}$
+> - **G2 ($w=0.08$):** $\\Delta \\text{{RPS}} = {delta_rps_g2:+.6f}$, Kümeli %95 GA: `[{ci_95_g2[0]:+.6f}, {ci_95_g2[1]:+.6f}]`, $p_{{\\text{{Holm}}}} = {p_holm_g2:.4f}$
 > 
-> **Metodolojik Yorum:**
-> Model B zaten takım gücü, zaman azalışı ve şut kalitesi kompozit olabilirlik katsayısını (`shot_alpha=0.40`) Poisson MAP fit aşamasında doğrudan optimizasyona dahil etmektedir. İkinci aşamada eklenen üstel azalışlı vekil xG form katsayısı, mevcut kompozit bilgiye kıyasla ek bir ayrıştırıcı varyans sağlamamakta (veya hafif gürültü eklemekte) olduğundan, katı hakem kuralımız gereğince üretim hattında `xg_form_weight = 0.0` (kapalı) tutulmaya devam edilmelidir.
+> **Metodolojik Değerlendirme:**
+> Model B, şut kalitesi ve gol oranlarını Poisson MAP fit aşamasında `shot_alpha=0.40` ile doğrudan optimize etmektedir. Üzerine eklenen doğrusal form kayması, maç günü kümeli güven aralığının üst sınırında sıfırı dışlayacak düzeyde ek bir kestirimsel güç üretmemiştir. Bu nedenle aşırı öğrenmeyi önlemek adına `xg_form_weight = 0.0` (kapalı) tutulmaya devam edilmelidir.
 """
-
+    Path(output_md).parent.mkdir(parents=True, exist_ok=True)
     with open(output_md, "w", encoding="utf-8") as f:
         f.write(md)
 
-    print(f"✅ Experiment G complete! Results saved to {output_json} and {output_md}")
-    print(f"Decision: {decision_status}")
+    print(f"\nExperiment G complete. Decision: {decision_status}")
     return out_data
 
 

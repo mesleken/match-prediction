@@ -97,12 +97,17 @@
     },
     "xg_form_features_experiment_g": {
       "n_evaluated_matches": 1793,
+      "n_clusters": 194,
+      "mde_rps_alpha05_power80": 0.000559,
       "temperature": 0.75,
-      "model_b0_rps": 0.200772,
-      "model_g1_rps": 0.200381,
-      "delta_rps_g1": -0.000391,
-      "ci_95_delta_rps_g1": [-0.000748, 0.000017],
-      "paired_t_p_g1": 0.0531,
+      "model_b0_rps": 0.199752,
+      "model_b0_brier_ou25": 0.245542,
+      "model_b0_brier_btts": 0.248893,
+      "model_g1_rps": 0.199470,
+      "delta_rps_g1": -0.000282,
+      "cluster_ci_95_delta_rps_g1": [-0.000719, 0.000118],
+      "p_raw_t_g1": 0.1576,
+      "p_holm_g1": 0.3152,
       "decision": "G-KAPISI GEÇİLMEDİ (Vekil xG Formu Anlamlı Kazanç Sağlamadı - Katsayı Kapalı Tutulmalı)"
     }
   },

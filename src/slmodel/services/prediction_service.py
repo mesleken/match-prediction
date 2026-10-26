@@ -69,8 +69,12 @@ class MatchPredictionService:
         con.close()
 
         # 1. Pre-Match Forecasting (Dixon-Coles)
-        sq_priors = compute_squad_priors(db_path=self.db_path)
+        is_season_2627 = as_of_dt >= datetime(2026, 7, 1, tzinfo=timezone.utc)
+        sq_priors = compute_squad_priors(db_path=self.db_path) if is_season_2627 else {}
         model = create_dixon_coles_model(self.cfg, team_squad_priors=sq_priors)
+        if not is_season_2627:
+            model.squad_prior_weight = 0.0
+            model.early_season_prior_weight = 0.0
         if not matches_df.empty:
             model.fit(matches_df, as_of=as_of_dt)
 

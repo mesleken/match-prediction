@@ -197,3 +197,21 @@ def test_backtest_config_matches_production():
     assert backtester.w_blend_total == cfg.market_blend.w_total
     assert backtester.w_blend_superiority == cfg.market_blend.w_superiority
 
+
+def test_no_synthetic_availability_snapshots():
+    """Verify that warehouse has zero synthetic derived availability snapshots and no historical player leakages."""
+    import duckdb
+    con = duckdb.connect("data/warehouse.duckdb", read_only=True)
+    try:
+        derived_count = con.execute("SELECT COUNT(*) FROM availability_snapshots WHERE source = 'derived'").fetchone()[0]
+        assert derived_count == 0, f"Found {derived_count} synthetic 'derived' availability snapshots! Must be 0."
+
+        hist_pstats = con.execute("""
+            SELECT COUNT(*) FROM player_match_stats p
+            JOIN matches m ON p.match_id = m.match_id
+            WHERE m.season != '2627'
+        """).fetchone()[0]
+        assert hist_pstats == 0, f"Found {hist_pstats} historical player_match_stats rows with 2627 roster lookahead! Must be 0."
+    finally:
+        con.close()
+
