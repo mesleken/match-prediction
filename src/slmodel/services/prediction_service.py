@@ -38,6 +38,7 @@ class MatchAnalysisResult:
     top_scores: list[dict[str, Any]]
     markdown_report: str
     p_calibrated_1x2: Optional[tuple[float, float, float]] = None
+    rho: float = -0.05
 
 
 class MatchPredictionService:
@@ -198,6 +199,7 @@ class MatchPredictionService:
             lam_a=round(lam_a, 2),
             ci_90_lam_h=(round(ci_90_h[0], 2), round(ci_90_h[1], 2)),
             ci_90_lam_a=(round(ci_90_a[0], 2), round(ci_90_a[1], 2)),
+            rho=round(float(unc.get("rho", -0.05)), 4),
             ev_outcomes=ev_outcomes,
             monte_carlo=mc_res,
             top_scores=top_scores,

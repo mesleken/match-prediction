@@ -1433,5 +1433,62 @@ def simulate_command(
     typer.echo("")
 
 
+matchday_app = typer.Typer(name="matchday", help="Prospective matchday batch forecasting and CLV tracking.")
+app.add_typer(matchday_app, name="matchday")
+
+
+@matchday_app.command(name="record")
+def matchday_record(
+    season: str = typer.Option("2627", "--season", "-s", help="Season code (e.g. 2627)"),
+    matchday: int = typer.Option(..., "--matchday", "-m", help="Matchday number (e.g. 9)"),
+    as_of: Optional[str] = typer.Option(None, "--as-of", help="Cutoff UTC ISO timestamp (e.g. 2026-10-25T12:00:00Z)"),
+    monte_carlo: bool = typer.Option(True, "--monte-carlo/--no-monte-carlo", help="Run MatchEngine simulation"),
+    simulations: int = typer.Option(500, "--simulations", "-n", help="Number of Monte Carlo simulations per match"),
+    db_path: str = typer.Option("data/warehouse.duckdb", "--db-path", help="Path to DuckDB warehouse"),
+) -> None:
+    """Record prospective forecasts for an entire matchday into the tamper-proof ledger."""
+    from slmodel.services.matchday_runner import MatchdayRunner
+
+    as_of_dt = datetime.fromisoformat(as_of) if as_of else None
+    runner = MatchdayRunner(db_path=db_path)
+    typer.secho(f"\n🔮 Sezon {season} Hafta {matchday} Maç Günü Tahmin Hattı Başlatılıyor...", fg=typer.colors.CYAN, bold=True)
+    res = runner.record_matchday_forecasts(
+        season=season, matchday=matchday, as_of=as_of_dt, run_monte_carlo=monte_carlo, n_mc=simulations
+    )
+    if not res:
+        typer.secho(f"⚠️ Sezon {season} Hafta {matchday} için fikstür bulunamadı.", fg=typer.colors.YELLOW)
+        return
+
+    typer.secho(f"✅ Toplam {len(res)} karşılaşma başarıyla analiz edildi ve loglandı:\n", fg=typer.colors.GREEN, bold=True)
+    for fix in res:
+        p1, px, p2 = fix["p_calibrated_1x2"] or fix["p_football_1x2"]
+        typer.echo(f"  • {fix['home_team']} vs {fix['away_team']}: %{p1*100:.1f} / %{px*100:.1f} / %{p2*100:.1f} (Log #{fix['pred_id']})")
+    typer.secho(f"\n📁 Markdown dosyaları: reports/matchdays/season_{season}_md_{matchday}/", fg=typer.colors.BLUE)
+
+
+@matchday_app.command(name="evaluate")
+def matchday_evaluate(
+    season: str = typer.Option("2627", "--season", "-s", help="Season code (e.g. 2627)"),
+    matchday: int = typer.Option(..., "--matchday", "-m", help="Matchday number (e.g. 9)"),
+    db_path: str = typer.Option("data/warehouse.duckdb", "--db-path", help="Path to DuckDB warehouse"),
+) -> None:
+    """Evaluate Closing Line Value (CLV) and out-of-sample realization for a recorded matchday."""
+    from slmodel.services.matchday_runner import MatchdayRunner
+
+    runner = MatchdayRunner(db_path=db_path)
+    typer.secho(f"\n📈 Sezon {season} Hafta {matchday} CLV ve Gerçekleşme Değerlendirmesi...", fg=typer.colors.CYAN, bold=True)
+    res = runner.evaluate_matchday_clv(season=season, matchday=matchday)
+    if res.get("status") == "empty":
+        typer.secho(f"⚠️ {res['message']}", fg=typer.colors.YELLOW)
+        return
+
+    typer.echo(f"  Kapanış Oranı Olan Fikstür: {res['fixtures_with_closing_odds']}/{res['total_fixtures']}")
+    typer.echo(f"  Pozitif CLV Oranı (1/2)    : %{res['positive_clv_rate']*100:.1f}")
+    if res.get("mean_rps_realized"):
+        typer.echo(f"  Gerçekleşen Ortalama RPS   : {res['mean_rps_realized']:.6f}")
+        typer.echo(f"  Gerçekleşen Ortalama Brier : {res['mean_brier_realized']:.6f}")
+    typer.secho(f"\n✅ Detaylı CLV raporu: reports/matchdays/season_{season}_md_{matchday}/clv_evaluation_report.md", fg=typer.colors.GREEN)
+
+
 if __name__ == "__main__":
     app()
