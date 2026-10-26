@@ -34,51 +34,245 @@ MACKOLIK_TEAMS: dict[int, dict[str, Any]] = {
     39: {"name": "Amedspor", "mid": 591},
 }
 
-# Natural position hints for known players to guarantee realistic tactical roles
+# Natural position hints for known players across all 18 Süper Lig teams to guarantee authentic tactical roles
 KNOWN_PLAYER_POSITIONS: dict[str, str] = {
-    # Galatasaray
-    "Uğurcan Çakır": "GK", "Jankat Yılmaz": "GK", "Günay Güvenç": "GK",
+    # 1. Galatasaray
+    "Uğurcan Çakır": "GK", "Jankat Yılmaz": "GK", "Günay Güvenç": "GK", "Arda Yılmaz": "GK", "Enes Emre Büyük": "GK",
     "Davinson Sanchez": "CB", "Abdülkerim Bardakcı": "CB", "Bitshiabu": "CB", "Arda Ünyay": "CB",
+    "Kaan Bayri": "CB", "Ali Emir Esen": "CB", "Abdulsamet Şimşek": "CB",
     "Ismail Jakobs": "LB", "Eren Elmalı": "LB", "Kazımcan Karataş": "LB",
-    "Wilfried Singo": "RB", "Kaan Ayhan": "RB",
+    "Roland Sallai": "RB", "Wilfried Singo": "RB", "Kaan Ayhan": "RB",
     "Lucas Torreira": "DM", "Mario Lemina": "DM", "Lesley Ugochukwu": "DM", "Eyüp Aydın": "DM",
-    "Gabriel Sara": "CM", "İlkay Gündoğan": "CM", "Renato Nhaga": "CM",
-    "Roland Sallai": "AM", "Aleksey Batrakov": "AM", "Leroy Sane": "AM",
-    "Victor Osimhen": "CF", "Deniz Gül": "CF",
-    "Yunus Akgün": "RW", "Barış Alper Yılmaz": "LW", "Rafael Leao": "LW",
-    # Fenerbahçe
-    "Ederson": "GK", "Mert Günok": "GK", "İrfan Can Eğribayat": "GK",
-    "Milan Skriniar": "CB", "Nathan Ake": "CB", "Alexander Djiku": "CB", "Çağlar Söyüncü": "CB", "Rodrigo Becao": "CB",
+    "Gabriel Sara": "CM", "İlkay Gündoğan": "CM", "Renato Nhaga": "CM", "İlhami Siraçhan Nas": "CM",
+    "Aleksey Batrakov": "AM", "Onur Kağan Yıldız": "AM", "Ada Karatepe": "AM",
+    "Yunus Akgün": "RW", "Leroy Sane": "RW", "Can Armando Güner": "RW",
+    "Barış Alper Yılmaz": "LW", "Rafael Leao": "LW", "Berat Luş": "LW",
+    "Victor Osimhen": "CF", "Deniz Gül": "CF", "Ada Yüzgeç": "CF", "Efe Gündal": "CF", "Arda Tagay": "CF", "Abdullah Kolazlı": "CF",
+
+    # 2. Fenerbahçe
+    "Ederson": "GK", "Mert Günok": "GK", "Tarık Çetin": "GK", "Doruk Yazıcı": "GK",
+    "Milan Skriniar": "CB", "Nathan Ake": "CB", "Kojo Peprah Oppong": "CB", "Yiğit Efe Demir": "CB",
+    "Rodrigo Becao": "CB", "Alexander Djiku": "CB", "Gökmen Özdemir": "CB",
     "Archie Brown": "LB", "Jayden Oosterwolde": "LB", "Levent Mercan": "LB",
-    "Nelson Semedo": "RB", "Mert Müldür": "RB", "Bright Osayi-Samuel": "RB",
-    "Matteo Guendouzi": "DM", "Sofyan Amrabat": "DM", "İsmail Yüksek": "DM",
-    "NGolo Kante": "CM", "Fred": "CM", "Mert Hakan Yandaş": "CM",
-    "İrfan Can Kahveci": "AM", "Sebastian Szymanski": "AM",
-    "Vedat Muriqi": "CF", "Youssef En-Nesyri": "CF", "Cenk Tosun": "CF",
-    "Mason Greenwood": "RW", "Oğuz Aydın": "RW", "Cengiz Ünder": "RW",
-    "Kerem Aktürkoğlu": "LW", "Allan Saint-Maximin": "LW", "Dusan Tadic": "LW",
-    # Beşiktaş
-    "Alexander Nübel": "GK", "Doğan Alemdar": "GK", "Ersin Destanoğlu": "GK",
-    "Emirhan Topçu": "CB", "Tiago Djalo": "CB", "Gabriel Paulista": "CB", "Felix Uduokhai": "CB",
-    "Rıdvan Yılmaz": "LB", "Arthur Masuaku": "LB", "Arda Berk Özüarap": "LB",
-    "Amir Murillo": "RB", "Jonas Svensson": "RB", "Tayfur Bingöl": "RB",
-    "Salih Özcan": "DM", "Al-Musrati": "DM", "Junior Olaitan": "DM",
-    "Orkun Kökçü": "CM", "Gedson Fernandes": "CM", "Salih Uçan": "CM",
-    "Rafa Silva": "AM", "Ernest Muçi": "AM", "Vaclav Cerny": "AM",
-    "Tammy Abraham": "CF", "Hyeon-Gyu Oh": "CF", "Semih Kılıçsoy": "CF",
-    "Milot Rashica": "RW", "İlhan Fakılı": "RW",
-    "Leandro Trossard": "LW", "Can Keleş": "LW",
-    # Trabzonspor
-    "Andre Onana": "GK", "Uğurcan Çakır": "GK", "Ahmet Doğan Yıldırım": "GK",
-    "Stefan Savic": "CB", "Serdar Saatçı": "CB", "Arseniy Batagov": "CB", "Stefano Denswil": "CB",
-    "Sidny Lopes Cabral": "LB", "Borna Barisic": "LB", "Arif Boşluk": "LB",
-    "Mustafa Eskihellaç": "RB", "Pedro Malheiro": "RB",
-    "Chibuike Nwaiwu": "DM", "John Lundstram": "DM", "Okay Yokuşlu": "DM",
-    "Wagner Pina": "CM", "Ozan Tufan": "CM", "Melih Kabasakal": "CM", "Batista Mendy": "CM",
-    "Muhammed Cham": "AM", "Enis Bardhi": "AM",
-    "Mohamed Salah": "RW", "Edin Visca": "RW", "Cihan Çanak": "RW",
-    "Paul Onuachu": "CF", "Simon Banza": "CF", "Enis Destan": "CF",
-    "Denis Dragus": "LW", "Anthony Nwakaeme": "LW",
+    "Nelson Semedo": "RB", "Mert Müldür": "RB", "Ognjen Mimovic": "RB", "Bright Osayi-Samuel": "RB",
+    "Matteo Guendouzi": "DM", "İsmail Yüksek": "DM", "Bartuğ Elmaz": "DM", "Sofyan Amrabat": "DM", "Abdou Aziz Fall": "DM",
+    "NGolo Kante": "CM", "Mert Hakan Yandaş": "CM", "Fred": "CM", "Efe Yılmaz": "CM", "Baran Yolaçan": "CM",
+    "İrfan Can Kahveci": "AM", "Marco Asensio": "AM", "Sebastian Szymanski": "AM", "Adnan Efe Fettahoğlu": "AM",
+    "Mason Greenwood": "RW", "Oğuz Aydın": "RW", "Amara Diouf": "RW",
+    "Kerem Aktürkoğlu": "LW", "Dorgeles Nene": "LW", "Yiğit Çolak": "LW", "Alaettin Ekici": "LW",
+    "Vedat Muriqi": "CF", "Romelu Lukaku": "CF", "Youssef En-Nesyri": "CF", "Cenk Tosun": "CF",
+    "Çağrı Hakan Balta": "CF", "Selahattin Sevim": "CF", "Onur Kuşcu": "CF", "Ercüment Sancaklı": "CF",
+
+    # 3. Beşiktaş
+    "Alexander Nübel": "GK", "Doğan Alemdar": "GK", "Emir Yaşar": "GK", "Ersin Destanoğlu": "GK",
+    "Emirhan Topçu": "CB", "Tiago Djalo": "CB", "Emmanuel Agbadou": "CB", "Ümit Akdağ": "CB",
+    "Yasin Özcan": "CB", "Cumali Gürsel": "CB", "Gabriel Paulista": "CB", "Felix Uduokhai": "CB",
+    "Rıdvan Yılmaz": "LB", "Kassoum Ouattara": "LB", "Emrecan Uzunhan": "LB", "Arda Berk Özüarap": "LB",
+    "Amir Murillo": "RB", "Taylan Bulut": "RB", "Azem Yortaç": "RB", "Jonas Svensson": "RB",
+    "Salih Özcan": "DM", "Wilfred Ndidi": "DM", "Kartal Yılmaz": "DM", "Fahri Ay": "DM", "Al-Musrati": "DM",
+    "Orkun Kökçü": "CM", "Fabio Miretti": "CM", "Gedson Fernandes": "CM",
+    "Junior Olaitan": "AM", "Rafa Silva": "AM",
+    "Vaclav Cerny": "RW", "Ernest Poku": "RW", "Milot Rashica": "RW", "Can Keleş": "RW", "Ozan Sevim": "RW",
+    "Leandro Trossard": "LW", "İlhan Fakılı": "LW",
+    "Hyeon-Gyu Oh": "CF", "Dusan Vlahovic": "CF", "Semih Kılıçsoy": "CF",
+    "Mustafa Hekimoğlu": "CF", "Ahmet Sami Bircan": "CF", "Tammy Abraham": "CF",
+
+    # 4. Trabzonspor
+    "Andre Onana": "GK", "Ahmet Doğan Yıldırım": "GK", "Onuralp Çevikkan": "GK", "Erol Can Çolak": "GK",
+    "Stefan Savic": "CB", "Chibuike Nwaiwu": "CB", "Cenk Özkacar": "CB", "Samet Akaydin": "CB",
+    "Arsenii Batagov": "CB", "Arseniy Batagov": "CB", "Mustafa Kuzey Akçay": "CB", "Murat Lakot": "CB",
+    "Ferhat Usta": "CB", "Esad Turan Uzun": "CB", "Alperen Çakıroğlu": "CB",
+    "Mustafa Eskihellaç": "LB", "Sidny Lopes Cabral": "LB", "Borna Barisic": "LB",
+    "Wagner Pina": "RB", "Pedro Malheiro": "RB",
+    "Fabinho": "DM", "Batista Mendy": "DM", "Okay Yokuşlu": "DM", "John Lundstram": "DM",
+    "Melih Kabasakal": "CM", "Ozan Tufan": "CM", "Benjamin Bouchouari": "CM", "Tim Folcarelli": "CM",
+    "Yiğithan Çubukcu": "CM", "Oğuzhan Ertem": "CM",
+    "Ernest Muçi": "AM", "Ruslan Malinovskyi": "AM", "Muhammed Cham": "AM",
+    "Mohamed Salah": "RW", "Noah Saviolo": "RW", "Cihan Çanak": "RW",
+    "Aral Şimşir": "LW", "Metehan Mimaroğlu": "LW", "Anthony Nwakaeme": "LW", "Denis Dragus": "LW",
+    "Paul Onuachu": "CF", "Franculino": "CF", "Umut Nayir": "CF",
+    "Ahmet Güren": "CF", "Hakan Yilmaz": "CF", "Ali Habeşoğlu": "CF",
+
+    # 5. Başakşehir
+    "Muhammed Şengezer": "GK", "Deniz Dilmen": "GK", "Volkan Babacan": "GK", "Ege Öztürk": "GK", "Lucas Stancic": "GK",
+    "Emin Bayram": "CB", "Jerome Opoku": "CB", "Ousseynou Ba": "CB", "Hamza Güreler": "CB",
+    "Christopher Operi": "LB", "Michal Karbownik": "LB", "Saba Kharebashvili": "LB",
+    "Ömer Ali Şahiner": "RB", "Onur Bulut": "RB",
+    "Umut Güneş": "DM", "Jakub Kaluzinski": "DM", "Onur Ergün": "DM",
+    "Olivier Kemen": "CM", "Berkay Özcan": "CM",
+    "Abbosbek Fayzullayev": "AM",
+    "Andreas Skov Olsen": "RW", "Yusuf Sarı": "RW", "Edin Visca": "RW",
+    "Ivan Brnic": "LW",
+    "Eldor Shomurodov": "CF", "Bertuğ Yıldırım": "CF", "Davie Selke": "CF", "Umut Bozok": "CF", "Batuhan Çelik": "CF",
+
+    # 6. Konyaspor
+    "Bahadır Güngördü": "GK", "Deniz Ertaş": "GK", "Egemen Aydın": "GK", "Emir Gündoğdu": "GK",
+    "Adil Demirbağ": "CB", "Uğurcan Yazğılı": "CB", "Rayyan Baniya": "CB", "Chidozie Awaziem": "CB",
+    "Ata Yanık": "CB", "Joao Pedro do Nascimento da Mata": "CB", "Eric Konate": "CB",
+    "Arthur Masuaku": "LB", "Arif Boşluk": "LB",
+    "Yhoan Andzouana": "RB", "Ahmet Oğuz": "RB",
+    "Marko Jevtovic": "DM", "Mücahit İbrahimoğlu": "DM",
+    "Melih İbrahimoğlu": "CM", "Ömer Çobanoğlu": "CM", "Kaan Akyazı": "CM",
+    "Rajmund Toth": "AM", "Enis Bardhi": "AM",
+    "Deniz Türüç": "RW", "Ebrima Colley": "RW", "Emir Bars": "RW",
+    "Diogo Gonçalves": "LW", "Jean-Luc Dompe": "LW",
+    "Jackson Muleka": "CF", "Enis Destan": "CF", "Mostafa Mohamed": "CF", "Eren Yağmur": "CF", "Berke Özçelik": "CF",
+
+    # 8. Kasımpaşa
+    "Andreas Gianniotis": "GK", "Ali Emre Yanar": "GK", "Hacı Ramazan Özkanlı": "GK", "Ege Albayrak": "GK",
+    "Matei Cristian Ilie": "CB", "Adem Arous": "CB", "Kevin Mouanga": "CB", "Ahmet Salih Arıcı": "CB",
+    "Ayberk Karapo": "LB", "Mortadha Ben Ouanes": "LB", "Godfried Frimpong": "LB", "Ömer Bayram": "LB", "Ahmet Taha Dağbaşı": "LB",
+    "Claudio Winck": "RB", "Kamil Ahmet Çörekçi": "RB",
+    "Andri Baldursson": "DM", "Jakob Jessen": "DM", "Atakan Müjde": "DM",
+    "Kerem Demirbay": "CM", "Elson Mendes": "CM", "Emirhan Boz": "CM", "Sinan Alkaş": "CM",
+    "Marcus Rafferty": "AM", "Haris Hajradinovic": "AM",
+    "Ali Yavuz Kol": "RW", "Jesuran Rak-Sakyi": "RW", "Fousseni Diabate": "RW", "Mamadou Fall": "RW",
+    "Adrian Benedyczak": "LW", "Thiemoko Diarra": "LW",
+    "Güven Yalçın": "CF", "Sercan Deniz": "CF", "Muhammed Emin Bektaş": "CF", "Emirhan Yiğit": "CF",
+
+    # 10. Alanyaspor
+    "Paulo Victor": "GK", "Mert Furkan Bayram": "GK", "Yusuf Karagöz": "GK", "Mahmut Can Kara": "GK",
+    "Nuno Lima": "CB", "Fatih Aksoy": "CB", "Bedirhan Özyurt": "CB", "Bilal Demirağ": "CB",
+    "Fidan Aliti": "LB", "Yusuf Özdemir": "LB", "Batuhan Yavuz": "LB",
+    "Florent Hadergjonaj": "RB", "Şahin Dik": "RB",
+    "Gaius Makouta": "DM", "Maestro": "DM", "İzzet Çelik": "DM", "Arouna Kigbafory Soro": "DM",
+    "Baran Ali Gezek": "CM", "Enes Keskin": "CM", "Yusuf Can Karademir": "CM", "Nejdet Nezir Bilin": "CM",
+    "İbrahim Kaya": "AM", "Ianis Hagi": "AM", "Emre Demir": "AM",
+    "Ruan": "RW", "Elia Meschack": "RW",
+    "Arda Usluoğlu": "LW", "Paulo Fernandes": "LW", "Omar Ben Ali": "LW",
+    "Ui-jo Hwang": "CF", "Ivan Cedric": "CF", "Veysel Ünal": "CF",
+
+    # 12. Gaziantep FK
+    "Kacper Tobiasz": "GK", "Ataberk Dadakdeniz": "GK", "Ibrahim Kağan Alkış": "GK", "Cemilhan Aslan": "GK",
+    "Myenty Abena": "CB", "Ulrich Meleke": "CB", "Arda Kızıldağ": "CB", "Abakar Sylla": "CB",
+    "Efe Sarıkaya": "CB", "Mervan Müjdeci": "CB",
+    "Kerim Çalhanoğlu": "LB", "Florin Stefan": "LB",
+    "Luis Perez": "RB", "Nazım Sangare": "RB", "Sabahattin Destici": "RB",
+    "Victor Gidado": "DM", "Ogün Özçiçek": "DM", "Karamba Gassama": "DM",
+    "Kacper Kozlowski": "CM", "Juninho Bacuna": "CM", "Taha Güneş": "CM",
+    "Alexandru Maxim": "AM", "Mirza Cihan": "AM", "Muhammet Akmelek": "AM",
+    "Deian Sorescu": "RW", "Enver Kulasin": "RW",
+    "Drissa Camara": "LW", "Sontje Hansen": "LW",
+    "Halil Dervişoğlu": "CF", "Trivante Stewart": "CF", "Serdar Dursun": "CF",
+    "Fuat Bavuk": "CF", "Ali Osman Kalın": "CF", "Burak Enes Yıkıcı": "CF",
+
+    # 15. Çaykur Rizespor
+    "Yahia Fofana": "GK", "Zafer Görgen": "GK", "Efe Doğan": "GK", "Hasan Yağız Döne": "GK",
+    "Modibo Sagnan": "CB", "Attila Mocsi": "CB", "Tayyip Talha Sanuç": "CB",
+    "Siaka Bakayoko": "CB", "Husniddin Alikulov": "CB", "Habil Özbakır": "CB",
+    "Zakaria Ariss": "LB", "Umut Erdem": "LB", "Muhammed Baltacı": "LB",
+    "Mithat Pala": "RB", "Taha Şahin": "RB",
+    "Taylan Antalyalı": "DM", "Moussa Diakité": "DM",
+    "Qazim Laçi": "CM", "Can Bozdogan": "CM", "Mustafa Tosun": "CM",
+    "Ibrahim Olawoyin": "AM", "Dal Varesanovic": "AM",
+    "Adedire Mebude": "RW", "Emrecan Bulut": "RW", "Iustin Doicaru": "RW",
+    "Ahmed Kutucu": "LW", "Valentin Mihaila": "LW",
+    "Ali Sowe": "CF", "Gennaro Borrelli": "CF", "Emirhan Yılmaz": "CF", "Yakup Ayan": "CF",
+
+    # 17. Göztepe
+    "Arda Özçimen": "GK", "Luka Gugeshashvili": "GK", "Mehmet Şamil Öztürk": "GK", "Nevzat Üzel": "GK",
+    "Taha Altıkardeş": "CB", "Malcom Bokele": "CB", "Ege Yıldırım": "CB", "Allan": "CB",
+    "Noah Sonko Sundberg": "CB", "Furkan Bayır": "CB", "Berke Sarigül": "CB",
+    "Richard Akonnor": "LB",
+    "Arda Okan Kurtulan": "RB", "Ogün Bayrak": "RB",
+    "Rhaldney": "DM", "Pah Gouhon": "DM",
+    "Novatus Miroshi": "CM", "Alex Matos": "CM",
+    "Alexis Antunes": "AM", "Efkan Bekiroğlu": "AM", "Faustino Anjorin": "AM",
+    "Janderson": "RW", "Gökdeniz Bayrakdar": "RW", "Guilherme Luiz": "RW",
+    "Juan": "LW", "Salem Bouajila": "LW", "Deniz Şeker": "LW",
+    "Andre Henrique": "CF", "Sinclair Armstrong": "CF", "Bekir Böke": "CF",
+    "Ibrahim Sabra": "CF", "Yusuf Ali Şirin": "CF", "Ömür Turan": "CF",
+
+    # 20. Samsunspor
+    "Okan Kocuk": "GK", "Bilal Bayazit": "GK", "Efe Üstün": "GK", "Efe Berat Töruz": "GK",
+    "Gabriele Guarino": "CB", "Yunus Emre Çift": "CB", "Toni Borevkovic": "CB", "Strahinja Erakovic": "CB",
+    "Ali Badra Diabate": "CB", "Igor Drapinski": "CB", "Bedirhan Çetin": "CB", "Kerem Fidan": "CB",
+    "Logi Tomasson": "LB", "Enes Albak": "LB",
+    "Joe Mendes": "RB", "Mustafa Tan": "RB",
+    "Celil Yüksel": "DM", "Elliot Watt": "DM",
+    "Yalçın Kayan": "CM", "Oskar Ohlenschlaeger": "CM",
+    "Samed Onur": "AM", "Afonso Sousa": "AM", "Antoine Sekongo": "AM",
+    "Emre Kılınç": "RW", "Elayis Tavsan": "RW",
+    "Saikuba Jarju": "LW", "Tanguy Coulibaly": "LW", "Kouadou Jaures Assoumou": "LW",
+    "Mohamed Bayo": "CF", "Marius Mouandilmadji": "CF", "Fatih Kaya": "CF", "Ebrima Ceesay": "CF",
+
+    # 26. Eyüpspor
+    "Horatiu Moldovan": "GK", "Emre Bilgin": "GK", "Umut Keseci": "GK",
+    "Zak Jules": "CB", "Jawad El Yamiq": "CB", "Charles-Andre Raux Yao": "CB", "Anıl Yaşar": "CB",
+    "Arda Yavuz": "CB", "Yiğit Demir": "CB", "Berhan Kutlay Şatlı": "CB",
+    "Simone Giordano": "LB", "Ömer Ahmet Ceyhan": "LB",
+    "Talha Ülvan": "RB", "Diabel Ndoye": "RB",
+    "Chandrel Massanga": "DM", "Taşkın İlter": "DM", "Christ Otiniel Sadia": "DM",
+    "David Costa": "CM", "Hamza Akman": "CM", "Erdem Çalık": "CM", "Berkay Kumlu": "CM",
+    "Abdelhamid Sabiri": "AM", "Mete Kaan Demir": "AM",
+    "Bilal Boutobba": "RW", "Musa Eren Karakaş": "RW",
+    "Konrad Michalak": "LW", "Lenny Pintor": "LW", "Prince Obeng Ampem": "LW",
+    "Ahmed Abdullahi": "CF", "Yusuf Barası": "CF", "Abdou Sy": "CF",
+
+    # 27. Gençlerbirliği
+    "İrfan Can Eğribayat": "GK", "Gökhan Akkan": "GK", "Berk Deniz Çukurcu": "GK",
+    "Dimitris Goutas": "CB", "Thalisson": "CB", "Metehan Baltacı": "CB",
+    "Yiğit Hamza Aydar": "CB", "Muhammet Çavuşoğlu": "CB",
+    "Abdurrahim Dursun": "LB", "Kevin Rodrigues": "LB",
+    "Pedro Pereira": "RB", "Fıratcan Üzüm": "RB",
+    "Ousmane Diabate": "DM", "Cheikh Niasse": "DM", "Peter Etebo": "DM", "Ensar Kemaloğlu": "DM",
+    "Oğulcan Ülgün": "CM", "Rafael Luis": "CM", "Salih Uçan": "CM", "Zafer Göktuğ Erdem": "CM",
+    "Franco Tongya": "AM", "Arda Çağan Çelik": "AM", "Erk Arda Aslan": "AM",
+    "Tiago Gouveia": "RW", "Prince Martor": "RW",
+    "Adama Traore": "LW", "Dilhan Demir": "LW",
+    "Sekou Koita": "CF", "Pedro Mendes": "CF", "Victor Orakpo": "CF",
+    "Furkan Özcan": "CF", "Hasan Oğul": "CF", "Arda Akgül": "CF",
+
+    # 30. Erzurumspor FK
+    "Ertuğrul Taşkıran": "GK", "Matija Orbanic": "GK", "Erkan Anapa": "GK", "Şerefhan Sağlık": "GK",
+    "Amar Gerxhaliu": "CB", "Nihad Mujakic": "CB", "Mustafa Yumlu": "CB", "Yakup Kırtay": "CB",
+    "Ömer Kara": "CB", "Emre Erdem": "CB", "Taha Rençber": "CB",
+    "Guram Giorbelidze": "LB", "Cengizhan Bayrak": "LB",
+    "Orhan Ovacıklı": "RB", "Festy Ebosele": "RB", "Yiğit Baran Karaoğlan": "RB",
+    "Elisha Owusu": "DM", "Lawrence Agyekum": "DM", "Mert Önal": "DM",
+    "Brandon Baiye": "CM", "Sefa Akgün": "CM", "Murat Cem Akpınar": "CM", "Eren Özdemir": "CM", "Emirhan Acar": "CM",
+    "Martin Rodriguez": "AM", "Furkan Özhan": "AM",
+    "Mustafa Fettahoğlu": "RW", "Gyrano Kerk": "RW", "Neriman Axundzade": "RW",
+    "Miguel Cardoso": "LW",
+    "Eren Tozlu": "CF", "Ibrahim Yalatif Diabate": "CF", "Fernando": "CF", "İlkan Sever": "CF",
+
+    # 35. Kocaelispor
+    "Serhat Öztaşdelen": "GK", "Aleksandar Jovanovic": "GK", "Onurcan Piri": "GK", "Talha Polat": "GK",
+    "Tanguy Zoukrou": "CB", "Emir Ortakaya": "CB", "Matej Maglica": "CB", "Onur Öztonga": "CB",
+    "Mikdat Çil": "CB", "Deniz Ceylan": "CB",
+    "Massadio Haidara": "LB", "Muharrem Cinan": "LB",
+    "Anfernee Dijksteel": "RB", "Uğur Kaan Yıldız": "RB", "Tayfur Bingöl": "RB",
+    "Show": "DM", "Habib Keita": "DM", "Hulusi Destici": "DM",
+    "Berkan Kutlu": "CM", "Bedirhan Yıldız": "CM", "Ege Bilim": "CM",
+    "Mahamadou Sissoho": "AM", "Tobias Gulliksen": "AM", "Haydar Karataş": "AM",
+    "Gonçalo Sousa": "RW", "Rigoberto Rivas": "RW", "Arda Özyar": "RW",
+    "Makana Baku": "LW", "Metehan Altunbaş": "LW",
+    "Daniel Agyei": "CF", "Florian Aye": "CF", "Bruno Petkovic": "CF",
+
+    # 38. Çorum FK
+    "Marcos Felipe": "GK", "Erhan Erentürk": "GK", "Arif Şimşir": "GK",
+    "Hrvoje Smolcic": "CB", "Alexandre Penetra": "CB", "Serdar Saatçı": "CB",
+    "Çağlar Söyüncü": "CB", "Arda Hilmi Şengül": "CB",
+    "Andrei Borza": "LB", "Cemali Sertel": "LB",
+    "Gökhan Sazdağı": "RB",
+    "Ylber Ramadani": "DM", "Berat Özdemir": "DM", "Atakan Akkaynak": "DM",
+    "Mohammed Diomande": "CM", "Ahmed Ildız": "CM", "Furkan Çetinkaya": "CM", "Semih Akyıldız": "CM",
+    "Fredy": "AM", "Markus Karlsbakk": "AM", "Ermin Mahmic": "AM", "Göktan Gürpüz": "AM",
+    "Cengiz Ünder": "RW", "Hasan Abdulkareem Sayyid": "RW", "Kenan Fakılı": "RW",
+    "Alexandros Kiziridis": "LW", "Emircan Gürlük": "LW", "Hüseyin Bulut": "LW",
+    "Jesus Ramirez": "CF", "Youssoufa Moukoko": "CF", "Mame Thiam": "CF", "Hasan Ege Akdoğan": "CF",
+
+    # 39. Amedspor
+    "Alban Lafont": "GK", "Burak Bozan": "GK", "Veysel Sapan": "GK", "Muhammed Damar": "GK",
+    "David Bates": "CB", "Lumbardh Dellova": "CB", "Mehmet Yeşil": "CB", "Kahraman Demirtaş": "CB",
+    "Umut Meraş": "LB", "Miraç Acer": "LB",
+    "Cem Üstündağ": "RB", "Ali Turap Bülbül": "RB",
+    "Rayan Raveloson": "DM", "Gökhan Gül": "DM", "Amadou Cisse": "DM",
+    "Furkan Soyalp": "CM", "Mohamed Khalil": "CM", "Rayan Lutin": "CM", "Berat Perçin": "CM",
+    "Dia Sabia": "AM", "Muhammed Hasan Yıldırım": "AM", "Berk Kızıldemir": "AM",
+    "Samuel Ballet": "RW", "Yira Collins Sor": "RW",
+    "Ermal Krasniqi": "LW",
+    "Gift Orban": "CF", "Mbaye Diagne": "CF", "İsmail Duyu": "CF",
 }
 
 HTTP_HEADERS = {
@@ -173,130 +367,116 @@ def parse_team_squad(
                 "val": val,
             })
 
-    # Group players by Mackolik section
-    gks = [p for p in parsed_players if p["cat"] == "K"]
-    defs = [p for p in parsed_players if p["cat"] == "D"]
-    mids = [p for p in parsed_players if p["cat"] == "O"]
-    fwds = [p for p in parsed_players if p["cat"] == "F"]
+    # Sort all players by starter merit: starts first, then minutes, matches, and market value
+    merit_key = lambda x: (x["starts"], x["minutes"], x["matches"], x["val"])
+    parsed_players.sort(key=merit_key, reverse=True)
 
-    # Sort candidates by starter merit (starts, minutes, goals, market value)
-    gks.sort(key=lambda x: (x["starts"], x["minutes"], x["val"]), reverse=True)
-    defs.sort(key=lambda x: (x["starts"], x["minutes"], x["val"]), reverse=True)
-    mids.sort(key=lambda x: (x["starts"], x["minutes"], x["val"]), reverse=True)
-    fwds.sort(key=lambda x: (x["goals"], x["starts"], x["minutes"], x["val"]), reverse=True)
+    # Pass 1: Assign authentic football position to every player FIRST
+    pos_counts: dict[str, int] = {
+        "GK": 0, "CB": 0, "LB": 0, "RB": 0,
+        "DM": 0, "CM": 0, "AM": 0, "RW": 0, "LW": 0, "CF": 0,
+    }
+    for p in parsed_players:
+        known = KNOWN_PLAYER_POSITIONS.get(p["name"])
+        if known in pos_counts:
+            pos_counts[known] += 1
 
-    assigned: list[tuple[dict[str, Any], str, bool]] = []
+    def_rot_idx, mid_rot_idx, fwd_rot_idx = 0, 0, 0
+    def_rot = ["CB", "LB", "RB", "CB"]
+    mid_rot = ["CM", "DM", "AM"]
+    fwd_rot = ["CF", "RW", "LW"]
 
-    # 1 GK starter
-    for i, p in enumerate(gks):
-        assigned.append((p, "GK", i == 0))
+    for p in parsed_players:
+        known = KNOWN_PLAYER_POSITIONS.get(p["name"])
+        if known in pos_counts:
+            p["pos"] = known
+            continue
 
-    # 4 DEF starters: 2 CB, 1 LB, 1 RB
-    # Check known position hints first
-    starter_defs = defs[:4]
-    bench_defs = defs[4:]
-
-    # For starter defs, assign CB, LB, RB respecting known hints
-    assigned_roles: list[str] = []
-    cb_count, lb_count, rb_count = 0, 0, 0
-    for p in starter_defs:
-        known_pos = KNOWN_PLAYER_POSITIONS.get(p["name"])
-        if known_pos in ("CB", "LB", "RB"):
-            assigned_roles.append(known_pos)
-            if known_pos == "CB": cb_count += 1
-            elif known_pos == "LB": lb_count += 1
-            elif known_pos == "RB": rb_count += 1
+        cat = p["cat"]
+        if cat == "K":
+            pos = "GK"
+        elif cat == "D":
+            if pos_counts["CB"] < 2:
+                pos = "CB"
+            elif pos_counts["LB"] < 1:
+                pos = "LB"
+            elif pos_counts["RB"] < 1:
+                pos = "RB"
+            else:
+                pos = def_rot[def_rot_idx % len(def_rot)]
+                def_rot_idx += 1
+        elif cat == "O":
+            if pos_counts["DM"] < 1:
+                pos = "DM"
+            elif pos_counts["CM"] < 1:
+                pos = "CM"
+            elif pos_counts["AM"] < 1:
+                pos = "AM"
+            else:
+                pos = mid_rot[mid_rot_idx % len(mid_rot)]
+                mid_rot_idx += 1
         else:
-            assigned_roles.append("")
+            if pos_counts["CF"] < 1:
+                pos = "CF"
+            elif pos_counts["RW"] < 1:
+                pos = "RW"
+            elif pos_counts["LW"] < 1:
+                pos = "LW"
+            else:
+                pos = fwd_rot[fwd_rot_idx % len(fwd_rot)]
+                fwd_rot_idx += 1
 
-    # Fill unassigned starter def roles (target: 2 CB, 1 LB, 1 RB)
-    needed_def = []
-    for _ in range(max(0, 2 - cb_count)): needed_def.append("CB")
-    for _ in range(max(0, 1 - lb_count)): needed_def.append("LB")
-    for _ in range(max(0, 1 - rb_count)): needed_def.append("RB")
-    while len(needed_def) < len(starter_defs):
-        needed_def.append("CB")
+        p["pos"] = pos
+        pos_counts[pos] += 1
 
-    for i, p in enumerate(starter_defs):
-        role = assigned_roles[i]
-        if not role:
-            role = needed_def.pop(0) if needed_def else "CB"
-        assigned.append((p, role, True))
+    # Pass 2: Select the 11 starters strictly by tactical formation slots (4-2-3-1 / 4-3-3)
+    # and starter merit (who started the most matches and played the most minutes in that position)
+    FORMATION_SLOTS: list[tuple[str, int]] = [
+        ("GK", 1),
+        ("RB", 1),
+        ("CB", 2),
+        ("LB", 1),
+        ("DM", 1),
+        ("CM", 1),
+        ("AM", 1),
+        ("RW", 1),
+        ("LW", 1),
+        ("CF", 1),
+    ]
+    by_pos: dict[str, list[dict[str, Any]]] = {pos: [] for pos, _ in FORMATION_SLOTS}
+    for p in parsed_players:
+        by_pos[p["pos"]].append(p)
+    for pos in by_pos:
+        by_pos[pos].sort(key=merit_key, reverse=True)
 
-    # Bench defs
-    def_bench_rot = ["CB", "LB", "RB", "CB"]
-    for i, p in enumerate(bench_defs):
-        known = KNOWN_PLAYER_POSITIONS.get(p["name"])
-        role = known if known in ("CB", "LB", "RB") else def_bench_rot[i % len(def_bench_rot)]
-        assigned.append((p, role, False))
+    starter_names: set[str] = set()
+    ordered_starters: list[tuple[dict[str, Any], str, bool]] = []
 
-    # 3 MID starters: 1 DM, 1 CM, 1 AM
-    starter_mids = mids[:3]
-    bench_mids = mids[3:]
-    mid_roles = []
-    dm_c, cm_c, am_c = 0, 0, 0
-    for p in starter_mids:
-        known = KNOWN_PLAYER_POSITIONS.get(p["name"])
-        if known in ("DM", "CM", "AM"):
-            mid_roles.append(known)
-            if known == "DM": dm_c += 1
-            elif known == "CM": cm_c += 1
-            elif known == "AM": am_c += 1
-        else:
-            mid_roles.append("")
+    for pos, target_count in FORMATION_SLOTS:
+        candidates = by_pos.get(pos, [])
+        selected = candidates[:target_count]
+        for p in selected:
+            starter_names.add(p["name"])
+            ordered_starters.append((p, pos, True))
 
-    needed_mid = []
-    for _ in range(max(0, 1 - dm_c)): needed_mid.append("DM")
-    for _ in range(max(0, 1 - cm_c)): needed_mid.append("CM")
-    for _ in range(max(0, 1 - am_c)): needed_mid.append("AM")
-    while len(needed_mid) < len(starter_mids):
-        needed_mid.append("CM")
+    # Fallback if a squad had fewer candidates in a sub-slot (fill from same line without duplicating GK or CF)
+    if len(ordered_starters) < 11:
+        remaining = [
+            p for p in parsed_players
+            if p["name"] not in starter_names and p["pos"] not in ("GK", "CF")
+        ]
+        remaining.sort(key=merit_key, reverse=True)
+        for p in remaining[: 11 - len(ordered_starters)]:
+            starter_names.add(p["name"])
+            ordered_starters.append((p, p["pos"], True))
 
-    for i, p in enumerate(starter_mids):
-        role = mid_roles[i]
-        if not role:
-            role = needed_mid.pop(0) if needed_mid else "CM"
-        assigned.append((p, role, True))
+    ordered_bench: list[tuple[dict[str, Any], str, bool]] = [
+        (p, p["pos"], False)
+        for p in sorted(parsed_players, key=merit_key, reverse=True)
+        if p["name"] not in starter_names
+    ]
 
-    mid_bench_rot = ["CM", "DM", "AM"]
-    for i, p in enumerate(bench_mids):
-        known = KNOWN_PLAYER_POSITIONS.get(p["name"])
-        role = known if known in ("DM", "CM", "AM") else mid_bench_rot[i % len(mid_bench_rot)]
-        assigned.append((p, role, False))
-
-    # 3 FWD starters: 1 CF, 1 RW, 1 LW
-    starter_fwds = fwds[:3]
-    bench_fwds = fwds[3:]
-    fwd_roles = []
-    cf_c, rw_c, lw_c = 0, 0, 0
-    for p in starter_fwds:
-        known = KNOWN_PLAYER_POSITIONS.get(p["name"])
-        if known in ("CF", "RW", "LW"):
-            fwd_roles.append(known)
-            if known == "CF": cf_c += 1
-            elif known == "RW": rw_c += 1
-            elif known == "LW": lw_c += 1
-        else:
-            fwd_roles.append("")
-
-    needed_fwd = []
-    for _ in range(max(0, 1 - cf_c)): needed_fwd.append("CF")
-    for _ in range(max(0, 1 - rw_c)): needed_fwd.append("RW")
-    for _ in range(max(0, 1 - lw_c)): needed_fwd.append("LW")
-    while len(needed_fwd) < len(starter_fwds):
-        needed_fwd.append("CF")
-
-    for i, p in enumerate(starter_fwds):
-        role = fwd_roles[i]
-        if not role:
-            role = needed_fwd.pop(0) if needed_fwd else "CF"
-        assigned.append((p, role, True))
-
-    fwd_bench_rot = ["CF", "RW", "LW"]
-    for i, p in enumerate(bench_fwds):
-        known = KNOWN_PLAYER_POSITIONS.get(p["name"])
-        role = known if known in ("CF", "RW", "LW") else fwd_bench_rot[i % len(fwd_bench_rot)]
-        assigned.append((p, role, False))
+    assigned: list[tuple[dict[str, Any], str, bool]] = ordered_starters + ordered_bench
 
     final_players = []
     starters_dict: dict[str, list[dict[str, Any]]] = {
@@ -419,6 +599,7 @@ def fetch_and_sync_all_mackolik_squads(
     json_out: str = "config/squads_2627.json",
     raw_cache_path: str = "data/raw/mackolik_squads_2627_raw.json",
     use_cache_on_fail: bool = True,
+    prefer_cache: bool = False,
 ) -> dict[str, Any]:
     """
     Fetch 2026/27 squads from Mackolik for all 18 Süper Lig teams,
@@ -430,14 +611,25 @@ def fetch_and_sync_all_mackolik_squads(
     fetched_raw: dict[int, dict[str, Any]] = {}
     errors: list[str] = []
 
-    # Attempt fetching live from Mackolik
-    for tid, info in MACKOLIK_TEAMS.items():
+    if prefer_cache and raw_cache_file.exists():
         try:
-            raw = fetch_mackolik_team_squad(info["mid"], season="2026/2027")
-            fetched_raw[tid] = raw
-            time.sleep(0.15)  # Politeness delay
+            cached_data = json.loads(raw_cache_file.read_text(encoding="utf-8"))
+            for tid_str, raw in cached_data.items():
+                fetched_raw[int(tid_str)] = raw
         except Exception as e:
-            errors.append(f"Team {info['name']} (ID {info['mid']}): {e}")
+            errors.append(f"Cache read error: {e}")
+
+    # Attempt fetching live from Mackolik for any team not loaded from cache
+    if len(fetched_raw) < len(MACKOLIK_TEAMS):
+        for tid, info in MACKOLIK_TEAMS.items():
+            if tid in fetched_raw:
+                continue
+            try:
+                raw = fetch_mackolik_team_squad(info["mid"], season="2026/2027")
+                fetched_raw[tid] = raw
+                time.sleep(0.15)  # Politeness delay
+            except Exception as e:
+                errors.append(f"Team {info['name']} (ID {info['mid']}): {e}")
 
     # If some failed and cache exists, merge from cache
     if errors and use_cache_on_fail and raw_cache_file.exists():
@@ -472,6 +664,17 @@ def fetch_and_sync_all_mackolik_squads(
     con = duckdb.connect(db_path)
     try:
         tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]
+        saved_overrides = []
+        if "availability_overrides" in tables and "players" in tables:
+            saved_overrides = con.execute("""
+                SELECT o.override_id, o.team_id, p.name, o.status, o.match_id, o.note, o.created_at, o.expires_at, o.active
+                FROM availability_overrides o
+                JOIN players p ON o.player_id = p.player_id
+            """).fetchall()
+            con.execute("DELETE FROM availability_overrides")
+        elif "availability_overrides" in tables:
+            con.execute("DELETE FROM availability_overrides")
+
         if "player_match_stats" in tables:
             con.execute("DELETE FROM player_match_stats")
         if "player_season_stats" in tables:
@@ -508,6 +711,18 @@ def fetch_and_sync_all_mackolik_squads(
             INSERT INTO players (player_id, team_id, name, position, nationality, age, att_rating, def_rating, overall_rating, market_value_eur, is_starter)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, players_rows)
+
+        if saved_overrides:
+            restored_overrides = []
+            for ov_id, tid, p_name, st_val, m_id, note, c_at, e_at, act in saved_overrides:
+                new_pid = name_to_id.get((int(tid), str(p_name)))
+                if new_pid:
+                    restored_overrides.append((ov_id, tid, new_pid, st_val, m_id, note, c_at, e_at, act))
+            if restored_overrides:
+                con.executemany("""
+                    INSERT INTO availability_overrides (override_id, team_id, player_id, status, match_id, note, created_at, expires_at, active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, restored_overrides)
 
         synergy_rows = []
         for tid, sdata in parsed_teams.items():

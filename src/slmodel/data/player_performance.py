@@ -189,9 +189,16 @@ def _simulate_team_match_events(
 
     active_starters = starters[:11]
 
-    # Select 3 to 4 substitutes who get playing time (10-30 mins)
-    n_subs = min(len(bench), rng.randint(3, 5))
-    active_subs = list(rng.choice(bench, size=n_subs, replace=False)) if n_subs > 0 else []
+    # Select 3 to 4 outfield substitutes weighted by overall quality (never sub in backup GKs as field players)
+    field_bench = [p for p in bench if p["position"] != "GK"]
+    n_subs = min(len(field_bench), rng.randint(3, 5))
+    if n_subs > 0:
+        sub_weights = np.array([max(1.0, float(p.get("overall_rating", 70.0)) - 66.0) ** 2 for p in field_bench])
+        sub_weights = sub_weights / sub_weights.sum()
+        sub_indices = rng.choice(len(field_bench), size=n_subs, replace=False, p=sub_weights)
+        active_subs = [field_bench[idx] for idx in sub_indices]
+    else:
+        active_subs = []
 
     playing_players: list[dict[str, Any]] = []
 
@@ -474,6 +481,66 @@ def compute_player_season_stats_and_ratings(
         "avg_match_rating": 6.70,
     })
 
+    # If authentic Mackolik 2026/27 season statistics exist in config/squads_2627.json,
+    # enrich matches_played, matches_started, minutes_played, goals, assists, yellow_cards, red_cards
+    # with the exact official Mackolik counts while keeping match-derived tactical metrics consistent.
+    squads_json_path = Path("config/squads_2627.json")
+    if str(season) == "2627" and squads_json_path.exists():
+        try:
+            squads_data = json.loads(squads_json_path.read_text(encoding="utf-8"))
+            real_stats_map: dict[tuple[int, str], dict[str, Any]] = {}
+            for tid_str, t_info in squads_data.items():
+                tid_int = int(tid_str)
+                for p_rec in t_info.get("players", []):
+                    real_stats_map[(tid_int, p_rec["name"])] = p_rec
+
+            for idx, row in df.iterrows():
+                key = (int(row["team_id"]), str(row["name"]))
+                if key in real_stats_map:
+                    rp = real_stats_map[key]
+                    r_matches = int(rp.get("matches", row["matches_played"]))
+                    r_starts = int(rp.get("starts", row["matches_started"]))
+                    r_mins = int(rp.get("minutes", row["minutes_played"]))
+                    r_goals = int(rp.get("goals", row["goals"]))
+                    r_assists = int(rp.get("assists", row["assists"]))
+                    r_yellow = int(rp.get("yellow", row["yellow_cards"]))
+                    r_red = int(rp.get("red", row["red_cards"]))
+
+                    df.at[idx, "matches_played"] = r_matches
+                    df.at[idx, "matches_started"] = r_starts
+                    df.at[idx, "minutes_played"] = r_mins
+                    df.at[idx, "goals"] = r_goals
+                    df.at[idx, "assists"] = r_assists
+                    df.at[idx, "yellow_cards"] = r_yellow
+                    df.at[idx, "red_cards"] = r_red
+
+                    if r_matches == 0:
+                        df.at[idx, "shots"] = 0
+                        df.at[idx, "shots_on_target"] = 0
+                        df.at[idx, "key_passes"] = 0
+                        df.at[idx, "tackles"] = 0
+                        df.at[idx, "interceptions"] = 0
+                        df.at[idx, "saves"] = 0
+                        df.at[idx, "clean_sheets"] = 0
+                        df.at[idx, "goals_conceded"] = 0
+                        df.at[idx, "xg"] = 0.0
+                        df.at[idx, "xa"] = 0.0
+                        df.at[idx, "avg_match_rating"] = 6.70
+                    else:
+                        # Ensure shots/sot/xg/xa are at least consistent with real goals & assists
+                        sot_val = max(int(row["shots_on_target"]), r_goals)
+                        shots_val = max(int(row["shots"]), sot_val + max(0, int(r_mins // 120)))
+                        kp_val = max(int(row["key_passes"]), r_assists)
+                        xg_val = round(max(float(row["xg"]), r_goals * 0.58 + (shots_val - r_goals) * 0.07), 2)
+                        xa_val = round(max(float(row["xa"]), r_assists * 0.42 + (kp_val - r_assists) * 0.06), 2)
+                        df.at[idx, "shots_on_target"] = sot_val
+                        df.at[idx, "shots"] = shots_val
+                        df.at[idx, "key_passes"] = kp_val
+                        df.at[idx, "xg"] = xg_val
+                        df.at[idx, "xa"] = xa_val
+        except Exception:
+            pass
+
     # Integer conversions
     int_cols = [
         "matches_played", "matches_started", "minutes_played", "goals", "assists",
@@ -622,6 +689,7 @@ def get_player_season_leaderboards(
                 t.name AS "Takım",
                 p.position AS "Mevki",
                 s.matches_played AS "Maç",
+                s.matches_started AS "İlk 11",
                 s.minutes_played AS "Dakika",
                 s.goals AS "Gol",
                 s.assists AS "Asist",

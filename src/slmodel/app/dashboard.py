@@ -905,7 +905,9 @@ with tabs[1]:
                 SELECT
                     p.position AS "Mevki",
                     p.name AS "Oyuncu",
+                    p.is_starter AS "Temel 11",
                     s.matches_played AS "Maç",
+                    s.matches_started AS "İlk 11",
                     s.minutes_played AS "Süre",
                     s.goals AS "Gol",
                     s.assists AS "Asist",

@@ -65,15 +65,26 @@ class PlayerRatingEngine:
             self.load_metadata()
         return self._cache_rosters.get(team_id, [])
 
+    POS_ORDER: dict[str, int] = {
+        "GK": 0, "RB": 1, "CB": 2, "LB": 3,
+        "DM": 4, "CM": 5, "AM": 6,
+        "RW": 7, "LW": 8, "CF": 9,
+    }
+
     def get_default_lineup(self, team_id: int) -> list[dict[str, Any]]:
-        """Return the benchmark 11 starters for a team."""
+        """Return the benchmark 11 starters for a team in tactical formation order (GK -> DEF -> MID -> FWD)."""
         roster = self.get_team_roster(team_id)
         starters = [p for p in roster if p.get("is_starter")]
         if len(starters) < 11 and len(roster) >= 11:
             # Fall back to top 11 by overall rating
             sorted_r = sorted(roster, key=lambda x: x["overall_rating"], reverse=True)
-            return sorted_r[:11]
-        return starters[:11]
+            starters = sorted_r[:11]
+        else:
+            starters = starters[:11]
+        return sorted(
+            starters,
+            key=lambda p: (self.POS_ORDER.get(p.get("position", "CM"), 99), -float(p.get("overall_rating", 70.0))),
+        )
 
     def get_candidate_substitutes(
         self,

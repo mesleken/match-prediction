@@ -113,3 +113,59 @@ def test_marginal_player_importance_ranking(player_eng):
     top_player = importance[0]
     assert top_player["marginal_drop_win_pct"] > 3.0
     assert top_player["marginal_goal_diff_loss"] > 0.10
+
+
+def test_all_18_teams_valid_tactical_formation_and_positions(player_eng):
+    """
+    Verify that every team has a valid 11-player tactical formation (1 GK, 1 RB, 2 CB, 1 LB,
+    1 DM, 1 CM, 1 AM, 1 RW, 1 LW, 1 CF), authentic player positions, and starters selected
+    by who started the most matches in each position.
+    """
+    import json
+    from collections import Counter
+    from pathlib import Path
+
+    expected_formation = Counter({
+        "GK": 1, "RB": 1, "CB": 2, "LB": 1,
+        "DM": 1, "CM": 1, "AM": 1,
+        "RW": 1, "LW": 1, "CF": 1,
+    })
+
+    squads_json = json.loads(Path("config/squads_2627.json").read_text(encoding="utf-8"))
+    assert len(player_eng._cache_rosters) == 18
+
+    for tid, roster in player_eng._cache_rosters.items():
+        starters = player_eng.get_default_lineup(tid)
+        assert len(starters) == 11, f"Team {tid} does not have 11 starters"
+        pos_counts = Counter(p["position"] for p in starters)
+        assert pos_counts == expected_formation, f"Team {tid} has invalid formation: {pos_counts}"
+
+        # Verify starter merit by starts within each position in squads_2627.json
+        team_json_players = squads_json[str(tid)]["players"]
+        for pos, count in expected_formation.items():
+            pos_players = [p for p in team_json_players if p["pos"] == pos]
+            pos_starters = [p for p in pos_players if p["starter"]]
+            pos_bench = [p for p in pos_players if not p["starter"]]
+            assert len(pos_starters) == count
+            if pos_starters and pos_bench:
+                min_starter_merit = min((p["starts"], p["minutes"], p["matches"], p["val"]) for p in pos_starters)
+                max_bench_merit = max((p["starts"], p["minutes"], p["matches"], p["val"]) for p in pos_bench)
+                assert min_starter_merit >= max_bench_merit, (
+                    f"Team {tid} pos {pos}: bench player has more starts/merit than starter!"
+                )
+
+    # Specific player position and starter checks (e.g. Beşiktaş Vlahovic vs Hyeon-Gyu Oh)
+    bjk_roster = {p["name"]: p for p in player_eng.get_team_roster(3)}
+    assert bjk_roster["Dusan Vlahovic"]["position"] == "CF"
+    assert bjk_roster["Hyeon-Gyu Oh"]["position"] == "CF"
+    assert bjk_roster["Vaclav Cerny"]["position"] == "RW"
+    assert bjk_roster["Vaclav Cerny"]["is_starter"] is True
+    assert bjk_roster["Leandro Trossard"]["position"] == "LW"
+    assert bjk_roster["Leandro Trossard"]["is_starter"] is True
+    assert bjk_roster["Junior Olaitan"]["position"] == "AM"
+
+    # Vlahovic and Hyeon-Gyu Oh must never both be starters simultaneously
+    bjk_starter_names = {p["name"] for p in player_eng.get_default_lineup(3)}
+    assert not ("Dusan Vlahovic" in bjk_starter_names and "Hyeon-Gyu Oh" in bjk_starter_names)
+    assert "Hyeon-Gyu Oh" in bjk_starter_names  # 9 starts vs Vlahovic 7 starts
+
